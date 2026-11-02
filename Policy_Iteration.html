@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>policy_iteration() — Code Walkthrough</title>
+<style>
+:root{--bg:#0b1020;--bg2:#121a33;--card:rgba(255,255,255,.055);--bd:rgba(255,255,255,.1);--tx:#eef1fb;--tx2:#9aa6c7;--mut:#66719a;
+--g:#2ee6a6;--r:#ff5d73;--o:#ffb547;--p:#8b7bff;--b:#4cc2ff;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media(prefers-color-scheme:light){:root{--bg:#eef1fb;--bg2:#fff;--card:rgba(255,255,255,.8);--bd:rgba(20,30,70,.12);--tx:#141a33;--tx2:#4a5578;--mut:#7c87a8;--g:#0aa77a;--r:#e0364f;--o:#e08a00;--p:#6a58f0;--b:#1b8fd6}}
+*{box-sizing:border-box}
+body{margin:0;padding:22px;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--tx);min-height:100vh;
+background:radial-gradient(900px 500px at 10% -10%,rgba(139,123,255,.25),transparent 60%),radial-gradient(800px 500px at 100% 0,rgba(46,230,166,.15),transparent 60%),var(--bg)}
+.app{max-width:1060px;margin:auto}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.4px;background:linear-gradient(90deg,var(--p),var(--b),var(--g));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--tx2);font-size:13px;margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:14px 16px;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.lab{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--tx2);margin:0 0 8px;font-weight:600}
+.pipe{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
+.chip{position:relative;padding:9px 10px;border-radius:12px;border:1px solid var(--bd);background:var(--card);font-size:12px;color:var(--tx2);transition:.25s}
+.chip b{display:block;font-size:10px;color:var(--mut);margin-bottom:2px}
+.chip.on{color:var(--tx);border-color:var(--p);background:linear-gradient(135deg,rgba(139,123,255,.3),rgba(76,194,255,.15));box-shadow:0 0 0 3px rgba(139,123,255,.2),0 8px 22px rgba(139,123,255,.3);transform:translateY(-3px)}
+.chip.on b{color:var(--p)}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.stat{padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--bd)}
+.stat span{font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.6px}
+.stat b{display:block;font-size:24px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.bar{height:5px;border-radius:3px;background:var(--bd);margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;width:0;border-radius:3px;transition:width .4s}
+.main{display:grid;grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:14px}
+.gridcard{padding:10px}
+#grid{width:100%;height:auto;display:block}
+#bot{transition:transform .45s cubic-bezier(.34,1.4,.64,1)}
+.pulse{animation:pl 1s ease-in-out infinite}@keyframes pl{50%{opacity:.35}}
+.dash{stroke-dasharray:7 6;animation:dh .6s linear infinite}@keyframes dh{to{stroke-dashoffset:-13}}
+.goal{animation:gl 2s ease-in-out infinite}@keyframes gl{50%{filter:drop-shadow(0 0 8px var(--g))}}
+#ttl{font-family:var(--mono);font-size:12.5px;color:var(--o);margin:0 0 8px;min-height:18px}
+#lines{font-family:var(--mono);font-size:12.5px;line-height:1.8;min-height:104px;color:var(--tx)}
+#lines b{color:var(--g)}
+.q{display:grid;grid-template-columns:24px 1fr 60px;gap:8px;align-items:center;margin:7px 0;font-size:13px}
+.qb{height:12px;border-radius:6px;background:var(--bd);position:relative;overflow:hidden}
+.qb i{position:absolute;top:0;bottom:0;left:0;border-radius:6px;transition:width .35s}
+.q.sel{color:var(--o);font-weight:700}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--tx2);margin-top:6px;padding:0 6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+button{font:600 13px inherit;font-family:inherit;color:var(--tx);padding:10px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--card);cursor:pointer;transition:.18s}
+button:hover{transform:translateY(-2px);border-color:var(--p);box-shadow:0 8px 18px rgba(139,123,255,.25)}
+button.pri{background:linear-gradient(135deg,var(--p),var(--b));border:0;color:#fff}
+pre{margin:0;font:12.5px/1.75 var(--mono);color:var(--tx2);white-space:pre-wrap;overflow-x:auto}
+.cl{display:block;padding:0 8px;border-left:3px solid transparent;border-radius:4px;transition:.2s}
+.cl.on{background:rgba(255,181,71,.15);border-left-color:var(--o);color:var(--tx);font-weight:600}
+.kw{color:var(--p)}.out{font:12.5px/1.8 var(--mono);color:var(--tx);background:rgba(0,0,0,.25);border-radius:10px;padding:10px 12px;white-space:pre-wrap}.out b{color:var(--g)}
+@media(max-width:820px){.main{grid-template-columns:1fr}.pipe{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:repeat(2,1fr)}}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}@media(max-width:820px){.two{grid-template-columns:1fr}}
+</style></head><body><div class="app">
+<h1>policy_iteration(env) · live code walkthrough</h1>
+<p class="sub">Alternate two moves: <b>evaluate</b> a fixed policy (500 sweeps, no max) and <b>improve</b> it greedily. When the greedy policy stops changing, it is optimal. Then compare with value iteration and see how γ changes convergence speed.</p>
+<div class="pipe" id="chips">
+<div class="chip" data-k="0"><b>STEP 1</b>init π = ↑, terminal</div><div class="chip" data-k="1"><b>STEP 2</b>V = zeros</div>
+<div class="chip" data-k="2"><b>STEP 3</b>evaluate π (sweep)</div><div class="chip" data-k="3"><b>STEP 4</b>improve: new = argmax</div>
+<div class="chip" data-k="4"><b>STEP 5</b>new == π ?</div><div class="chip" data-k="5"><b>STEP 6</b>compare with VI, γ study</div></div>
+<div class="stats">
+<div class="stat"><span>Iteration (it)</span><b id="sIt">0</b></div>
+<div class="stat"><span>Eval sweep</span><b id="sEv">0/500</b><div class="bar"><i id="pEv" style="background:var(--b)"></i></div></div>
+<div class="stat"><span>Last eval δ</span><b id="sD" style="font-size:19px;line-height:30px">–</b></div>
+<div class="stat"><span>Cells changed</span><b id="sCh">–</b></div>
+<div class="stat"><span>Status</span><b id="sSt" style="font-size:19px;line-height:30px">start</b><div class="bar"><i id="pSt" style="background:var(--g)"></i></div></div></div>
+<div class="main">
+<div class="card gridcard"><svg id="grid" viewBox="0 0 404 404"></svg>
+<div class="legend"><span><i style="background:var(--g)"></i>high V<sup>π</sup></span><span><i style="background:var(--r)"></i>low V<sup>π</sup></span><span><i style="background:#555c7a"></i>obstacle</span><span><i style="background:var(--o)"></i>cell whose action just changed</span><span><i style="background:var(--b)"></i>greedy path</span></div></div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div class="card"><p class="lab">policy_iteration() · highlighted line runs now</p><pre id="code">
+<span class="cl" data-k="0">pi = np.zeros(env.nS, int); terminal = {env.idx(o) for o in env.obs} | {env.idx(env.goal)}; it = 0</span><span class="cl"><span class="kw">while</span> True:</span><span class="cl" data-k="1">    it += 1; V = np.zeros(env.nS)</span><span class="cl" data-k="2">    <span class="kw">for</span> _ <span class="kw">in</span> range(500):</span><span class="cl" data-k="2">        V = np.array([0 if i in terminal else sum(p * (r + gamma * V[j] * (not d)) for p, j, r, d in env.transitions(i, pi[i])) for i in range(env.nS)])</span><span class="cl" data-k="3">    new = np.array([np.argmax([sum(p*(r+gamma*V[j]*(not d)) for ...) for a in range(4)]) for i in range(env.nS)])</span><span class="cl" data-k="4">    <span class="kw">if</span> (new == pi).all(): <span class="kw">return</span> V, pi, it</span><span class="cl" data-k="4">    pi = new</span><span class="cl" data-k="5">print("Policy iteration:", n_it, "... same policy as value iteration:", all(...))</span></pre></div>
+<div class="card"><p class="lab">What's happening</p><p id="ttl">Press “Next step” to begin</p>
+<div id="lines" style="min-height:130px">Policy iteration starts from a deliberately bad policy: always go ↑.</div></div>
+<div class="card"><p class="lab" id="qlab">Action values</p><div id="qrow"></div></div></div></div>
+<div class="two"><div class="card"><p class="lab" id="l1">Policy evaluation δ per sweep, one line per iteration (log scale)</p><svg id="c1" viewBox="0 0 640 110" width="100%" height="110" preserveAspectRatio="none"></svg><div class="legend" id="lg1"></div></div>
+<div class="card"><p class="lab" id="l2">Effect of discount factor γ on value iteration (appears at step 6)</p><svg id="c2" viewBox="0 0 640 110" width="100%" height="110" preserveAspectRatio="none"></svg><div class="legend" id="lg2"></div></div></div>
+<div class="card" style="margin-top:14px"><p class="lab">Notebook output</p><div class="out" id="out"></div></div>
+<div class="btns"><button class="pri" id="bNext">Next step ▸</button><button id="bPlay">▶ Play</button><button id="bEv">Finish evaluation</button><button id="bIt">Finish iteration</button><button id="bAll">Run to convergence</button><button id="bReset">↺ Reset</button></div>
+</div>
+<script>
+const N=6,OBS=new Set(['1,1','2,1','3,3','4,3','1,4','3,0','4,5']),SLIP=0.1,GM=0.95,TOL=1e-6,EV=500,MAXS=50;
+const MV=[[0,1],[1,0],[0,-1],[-1,0]],AR=['↑','→','↓','←'],$=id=>document.getElementById(id);
+const pos=i=>[i%N,Math.floor(i/N)],idx=(x,y)=>y*N+x;
+const f=v=>(v<0?'−':'')+Math.abs(v).toFixed(2);const P=p=>'('+p[0]+','+p[1]+')';
+const CS=64,cx=x=>10+x*CS,cy=y=>10+(5-y)*CS;
+function move(p,a){const q=[Math.min(Math.max(p[0]+MV[a][0],0),N-1),Math.min(Math.max(p[1]+MV[a][1],0),N-1)];if(OBS.has(q+''))return[p,-10,false];if(q[0]==5&&q[1]==5)return[q,10,true];return[q,-1,false]}
+const isT=i=>{const[x,y]=pos(i);return OBS.has(x+','+y)||(x==5&&y==5)};
+const STATES=[...Array(36).keys()].filter(i=>!isT(i));
+function trans(i,a){const o=[];for(let b=0;b<4;b++){const[q,r,d]=move(pos(i),b);o.push([(b==a?1-SLIP:0)+SLIP/4,idx(q[0],q[1]),r,d])}return o}
+const qv=(W,i,a,g=GM)=>trans(i,a).reduce((s,[p,j,r,d])=>s+p*(r+g*W[j]*(d?0:1)),0);
+const argmax=r=>{let b=0;for(let i=1;i<r.length;i++)if(r[i]>r[b])b=i;return b};
+const greedyOf=(W,g=GM)=>[...Array(36).keys()].map(i=>argmax([0,1,2,3].map(a=>qv(W,i,a,g))));
+function vi(g){let V=new Array(36).fill(0);const D=[];for(let n=0;n<20000;n++){const Vn=V.slice();STATES.forEach(i=>{Vn[i]=Math.max(...[0,1,2,3].map(a=>qv(V,i,a,g)))});let d=0;for(let i=0;i<36;i++)d=Math.max(d,Math.abs(Vn[i]-V[i]));D.push(d);V=Vn;if(d<TOL)break}return{V,D,pi:greedyOf(V,g)}}
+function mk(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function rollout(p,E=200){const rn=mk(1);let R=0,S=0,L=0,Ls=0,C=0;for(let e=0;e<E;e++){let s=0,tot=0,t=0,done=false,ok=false;while(!done){let b=p[s];if(rn()<SLIP)b=Math.floor(rn()*4);const[q,r,d]=move(pos(s),b);s=idx(q[0],q[1]);t++;tot+=r;if(r==-10)C++;done=d||t>=MAXS;ok=d}R+=tot;if(ok){S++;Ls+=t}L+=t}return{R:R/E,S:S/E,L:S?Ls/S:NaN,C:C/E}}
+let pi,V,it,evalCount,evD,newPi,chList,nCh,stage,c,res,trainMs=0;
+function init(){pi=new Array(36).fill(0);V=new Array(36).fill(0);it=0;evalCount=0;evD=[];newPi=null;chList=[];nCh=null;stage=0;c={};res=null;trainMs=0;
+$('ttl').textContent='Press “Next step” to begin';$('lines').innerHTML='Policy iteration starts from a deliberately bad policy: always go ↑.';render(-1)}
+function doStage(){let T='',L=[];const k=stage;
+if(stage==0){pi=new Array(36).fill(0);it=0;T='pi = np.zeros(env.nS, int); terminal = {...}; it = 0';L=['π(s) = 0 (↑) for every state, a poor starting policy','terminal = 7 obstacles + goal, V fixed at 0','it = 0'];stage=1}
+else if(stage==1){it++;V=new Array(36).fill(0);evalCount=0;evD.push([]);newPi=null;T='it += 1; V = np.zeros(env.nS)';L=['iteration #'+it+' begins','V is reset to zeros: evaluation starts from scratch each time','next: 500 sweeps of V = Σ p·(r + γ·V[j]) with π fixed'];stage=2}
+else if(stage==2){const Vo=V,v0=Vo[0];V=Vo.map((_,i)=>isT(i)?0:qv(Vo,i,pi[i]));let d=0;for(let i=0;i<36;i++)d=Math.max(d,Math.abs(V[i]-Vo[i]));evD[it-1].push(d);evalCount++;
+T='V = np.array([0 if i in terminal else Σ p·(r + γ·V[j]·(not d)) with a = pi[i]])';
+L=['sweep '+evalCount+' / '+EV+' with π fixed: each state uses <b>only its own action</b> (no max)','V[start]: '+f(v0)+' → <b>'+f(V[0])+'</b>   (π(start) = '+AR[pi[0]]+')','δ = '+d.toExponential(2)+(d===0?'  ← exact fixed point; remaining sweeps change nothing':'')];if(evalCount>=EV)stage=3}
+else if(stage==3){newPi=greedyOf(V);chList=STATES.filter(i=>newPi[i]!==pi[i]);nCh=chList.length;const sel=chList.length?chList[0]:0;
+c={i:sel,qs:[0,1,2,3].map(a=>qv(V,sel,a)),a:newPi[sel],old:pi[sel]};T='new = np.array([np.argmax([Σ p·(r + γ·V[j]·(not d)) for a in range(4)]) for i in ...])';
+L=['greedy improvement: pick the best action under the evaluated V<sup>π</sup>',nCh?'changed <b>'+nCh+'</b> of '+STATES.length+' free cells':'<b>no free cell changed</b>'].concat(chList.slice(0,6).map(i=>'&nbsp;&nbsp;'+P(pos(i))+':  '+AR[pi[i]]+' → <b>'+AR[newPi[i]]+'</b>')).concat(nCh>6?['&nbsp;&nbsp;… and '+(nCh-6)+' more']:[]);stage=4}
+else if(stage==4){const same=newPi.every((v,i)=>v===pi[i]);T='if (new == pi).all(): return V, pi, it';
+if(same){L=['new == π on all 36 states','→ <b>stable</b>: return V, pi, it = '+it];newPi=null;stage=5}else{pi=newPi;newPi=null;chList=[];L=['new ≠ π → pi = new','→ run another iteration with the improved policy'];stage=1}}
+else{const v=vi(GM),same=STATES.every(i=>pi[i]===v.pi[i]||Math.abs(V[i]-v.V[i])<1e-3);const gs=[0.5,0.8,0.95,0.99].map(g=>({g,D:vi(g).D}));res={v,same,ro:rollout(pi),gs};
+T='print("Policy iteration:", n_it, ...); value_iteration(env, gamma=g) for g in [0.5, 0.8, 0.95, 0.99]';
+L=['value iteration reference: '+v.D.length+' sweeps','same policy as value iteration on free cells: <b>'+(same?'True':'False')+'</b>','γ study: '+gs.map(o=>'γ='+o.g+' → '+o.D.length+' sweeps').join(', ')];stage=-1}
+return{k,T,L}}
+function step(){if(stage<0)return;const o=doStage();$('ttl').innerHTML=o.T;$('lines').innerHTML=o.L.join('<br>');render(o.k)}
+const msg=()=>stage<0?'Finished. Same optimal policy as value iteration.':'Iteration '+it+', evaluation sweep '+evalCount+'/'+EV+'.<br>Press “Next step” to continue.';
+function fast(first,pred){const T0=performance.now();let n=0;if(first)doStage();while(stage>=0&&!pred()&&n++<2e6)doStage();trainMs+=performance.now()-T0;c={};$('ttl').textContent='Fast-forwarded';$('lines').innerHTML=msg();render(-1)}
+function gpath(){const p=[0];let x=0;for(let n=0;n<30;n++){const q=move(pos(x),pi[x])[0],y=idx(q[0],q[1]);if(y===x||p.includes(y))break;p.push(y);x=y;if(y===35)break}return p}
+const COL=['#8b7bff','#4cc2ff','#2ee6a6','#ffb547','#ff5d73','#f78fb3','#c0ccff','#b8e986'];
+function chart(id,S,lg){let svg='',L=S.map(s=>s.d.map(x=>Math.log10(Math.max(x,1e-13))));if(!L.length||!L.some(a=>a.length>1)){$(id).innerHTML='';$(lg).innerHTML='';return}
+const all=L.flat(),mn=Math.min(-6.5,...all),mx=Math.max(...all),rg=(mx-mn)||1,mxn=Math.max(...L.map(a=>a.length)),Y=v=>(100-(v-mn)/rg*90).toFixed(1);
+L.forEach((a,k)=>{if(a.length>1)svg+='<polyline fill="none" stroke="'+S[k].c+'" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="'+a.map((v,i)=>(i/(mxn-1)*640).toFixed(1)+','+Y(v)).join(' ')+'"/>'});
+svg+='<line x1="0" x2="640" y1="'+Y(-6)+'" y2="'+Y(-6)+'" stroke="#2ee6a6" stroke-dasharray="6 5" opacity=".7" vector-effect="non-scaling-stroke"/>';$(id).innerHTML=svg;$(lg).innerHTML=S.map(s=>'<span><i style="background:'+s.c+'"></i>'+s.n+'</span>').join('')+'<span style="color:var(--g)">- - tol 1e-6</span>'}
+const DEFS='<defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ee6a6"/><stop offset="1" stop-color="#0aa77a"/></linearGradient><pattern id="rk" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#3a4160"/><rect width="3" height="8" fill="#2d3350"/></pattern></defs>';
+function render(k){document.querySelectorAll('.chip,.cl').forEach(e=>e.classList.toggle('on',+e.dataset.k===k));
+const last=evD.length?evD[evD.length-1]:[],d=last.length?last[last.length-1]:null;
+$('sIt').textContent=it;$('sEv').textContent=evalCount+'/'+EV;$('pEv').style.width=100*evalCount/EV+'%';$('sD').textContent=d===null?'–':d.toExponential(2);$('sCh').textContent=nCh===null?'–':nCh;$('sSt').textContent=res?'stable ✓':it?'iterating':'start';$('pSt').style.width=res?'100%':'0';
+const shown=newPi||pi,hasV=it>0;let g=DEFS;
+for(let i=0;i<36;i++){const[x,y]=pos(i),X=cx(x),Y=cy(y),m=CS-6;
+if(OBS.has(x+','+y)){g+='<rect x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="url(#rk)" stroke="#555c7a"/><text x="'+(X+m/2)+'" y="'+(Y+m/2+8)+'" text-anchor="middle" font-size="22" opacity=".6">🪨</text>';continue}
+if(x==5&&y==5){g+='<g class="goal"><rect x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="url(#gg)"/><text x="'+(X+m/2)+'" y="'+(Y+m/2+10)+'" text-anchor="middle" font-size="30" fill="#fff">★</text></g>';continue}
+const v=V[i];let fill='rgba(150,160,200,.1)',op=1;if(hasV&&Math.abs(v)>1e-9){if(v>=0){fill='#2ee6a6';op=0.15+0.7*Math.min(1,v/10)}else{fill='#ff5d73';op=0.15+0.65*Math.min(1,-v/10)}}
+const hl=k==3&&chList.includes(i);
+g+='<rect class="'+(hl?'pulse':'')+'" x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="'+fill+'" fill-opacity="'+op+'" stroke="'+(hl?'#ffb547':'rgba(150,160,200,.25)')+'" stroke-width="'+(hl?3:1)+'"/>'
++'<text x="'+(X+m/2)+'" y="'+(Y+m/2+(hasV?-2:7))+'" text-anchor="middle" font-size="22" font-weight="700" fill="'+(hl?'#ffb547':'var(--tx)')+'">'+AR[shown[i]]+'</text>'+(hasV?'<text x="'+(X+m/2)+'" y="'+(Y+m/2+16)+'" text-anchor="middle" font-size="11" fill="var(--tx2)">'+f(v)+'</text>':'')}
+if(res){const gp=gpath();if(gp.length>1)g+='<polyline points="'+gp.map(i=>{const q=pos(i);return(cx(q[0])+29)+','+(cy(q[1])+29)}).join(' ')+'" fill="none" stroke="#4cc2ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>'}
+$('grid').innerHTML=g;
+const qi=c.i!==undefined?c.i:0,qs=c.qs||[0,1,2,3].map(a=>qv(V,qi,a)),ca=c.a!==undefined?c.a:-1;
+$('qlab').textContent='Q(i,a) under V\u1D5E for cell '+P(pos(qi))+(c.old!==undefined?' · π: '+AR[c.old]+' → '+AR[c.a]:' · (current V)');
+let h='';for(let a=0;a<4;a++){const v=qs[a],w=Math.min(50,Math.abs(v)*5);h+='<div class="q'+(a===ca?' sel':'')+'"><span style="font-size:18px">'+AR[a]+'</span><div class="qb"><i style="'+(v>=0?'left:50%;background:linear-gradient(90deg,#0aa77a,#2ee6a6)':'right:50%;left:auto;background:linear-gradient(270deg,#e0364f,#ff5d73)')+';width:'+w+'%"></i><b style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--mut)"></b></div><span style="text-align:right;font-family:var(--mono)">'+f(v)+'</span></div>'}
+$('qrow').innerHTML=h;
+chart('c1',evD.map((a,n)=>{let e=a.findIndex(x=>x<1e-13);return{d:e<0?a:a.slice(0,e+1),c:COL[n%8],n:'iteration '+(n+1)}}),'lg1');
+chart('c2',res?res.gs.map((o,n)=>({d:o.D,c:COL[[1,2,3,4][n]],n:'γ='+o.g+' ('+o.D.length+' sweeps)'})):[],'lg2');
+const o=[res?'Policy iteration: <b>'+it+'</b> improvement steps | same policy as value iteration on free cells: <b>'+(res.same?'True':'False')+'</b>':'Policy iteration: iteration '+it+' in progress (evaluation sweep '+evalCount+'/'+EV+')'];
+if(res){o.push('Value iteration reference: '+res.v.D.length+' sweeps');const r=res.ro;o.push('rollout(π, 200 episodes): mean reward <b>'+r.R.toFixed(1)+'</b> | success <b>'+(100*r.S).toFixed(0)+'%</b> | mean steps <b>'+r.L.toFixed(1)+'</b> | obstacle bumps/ep <b>'+r.C.toFixed(2)+'</b>')}
+$('out').innerHTML=o.join('\n')}
+let timer=null;function stopPlay(){if(timer){clearInterval(timer);timer=null;$('bPlay').textContent='▶ Play'}}
+$('bNext').onclick=()=>{stopPlay();step()};
+$('bPlay').onclick=()=>{if(timer){stopPlay();return}timer=setInterval(()=>{if(stage===2&&evalCount>=5)fast(false,()=>stage!==2);else step();if(stage<0)stopPlay()},550);$('bPlay').textContent='⏸ Pause'};
+$('bEv').onclick=()=>{stopPlay();if(stage<0)return;fast(true,()=>stage!==2)};
+$('bIt').onclick=()=>{stopPlay();if(stage<0)return;fast(true,()=>stage===1)};
+$('bAll').onclick=()=>{stopPlay();if(stage<0)return;fast(false,()=>false)};
+$('bReset').onclick=()=>{stopPlay();init()};
+init();
+</script></body></html>

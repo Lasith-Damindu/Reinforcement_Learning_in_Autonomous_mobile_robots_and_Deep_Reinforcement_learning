@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dqn() — Code Walkthrough</title>
+<style>
+:root{--bg:#0b1020;--bg2:#121a33;--card:rgba(255,255,255,.055);--bd:rgba(255,255,255,.1);--tx:#eef1fb;--tx2:#9aa6c7;--mut:#66719a;
+--g:#2ee6a6;--r:#ff5d73;--o:#ffb547;--p:#8b7bff;--b:#4cc2ff;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media(prefers-color-scheme:light){:root{--bg:#eef1fb;--bg2:#fff;--card:rgba(255,255,255,.8);--bd:rgba(20,30,70,.12);--tx:#141a33;--tx2:#4a5578;--mut:#7c87a8;--g:#0aa77a;--r:#e0364f;--o:#e08a00;--p:#6a58f0;--b:#1b8fd6}}
+*{box-sizing:border-box}
+body{margin:0;padding:22px;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--tx);min-height:100vh;
+background:radial-gradient(900px 500px at 10% -10%,rgba(139,123,255,.25),transparent 60%),radial-gradient(800px 500px at 100% 0,rgba(46,230,166,.15),transparent 60%),var(--bg)}
+.app{max-width:1060px;margin:auto}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.4px;background:linear-gradient(90deg,var(--p),var(--b),var(--g));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--tx2);font-size:13px;margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:14px 16px;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.lab{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--tx2);margin:0 0 8px;font-weight:600}
+.pipe{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
+.chip{position:relative;padding:9px 10px;border-radius:12px;border:1px solid var(--bd);background:var(--card);font-size:12px;color:var(--tx2);transition:.25s}
+.chip b{display:block;font-size:10px;color:var(--mut);margin-bottom:2px}
+.chip.on{color:var(--tx);border-color:var(--p);background:linear-gradient(135deg,rgba(139,123,255,.3),rgba(76,194,255,.15));box-shadow:0 0 0 3px rgba(139,123,255,.2),0 8px 22px rgba(139,123,255,.3);transform:translateY(-3px)}
+.chip.on b{color:var(--p)}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.stat{padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--bd)}
+.stat span{font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.6px}
+.stat b{display:block;font-size:24px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.bar{height:5px;border-radius:3px;background:var(--bd);margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;width:0;border-radius:3px;transition:width .4s}
+.main{display:grid;grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:14px}
+.gridcard{padding:10px}
+#grid{width:100%;height:auto;display:block}
+#bot{transition:transform .45s cubic-bezier(.34,1.4,.64,1)}
+.pulse{animation:pl 1s ease-in-out infinite}@keyframes pl{50%{opacity:.35}}
+.dash{stroke-dasharray:7 6;animation:dh .6s linear infinite}@keyframes dh{to{stroke-dashoffset:-13}}
+.goal{animation:gl 2s ease-in-out infinite}@keyframes gl{50%{filter:drop-shadow(0 0 8px var(--g))}}
+#ttl{font-family:var(--mono);font-size:12.5px;color:var(--o);margin:0 0 8px;min-height:18px}
+#lines{font-family:var(--mono);font-size:12.5px;line-height:1.8;min-height:104px;color:var(--tx)}
+#lines b{color:var(--g)}
+.q{display:grid;grid-template-columns:24px 1fr 60px;gap:8px;align-items:center;margin:7px 0;font-size:13px}
+.qb{height:12px;border-radius:6px;background:var(--bd);position:relative;overflow:hidden}
+.qb i{position:absolute;top:0;bottom:0;left:0;border-radius:6px;transition:width .35s}
+.q.sel{color:var(--o);font-weight:700}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--tx2);margin-top:6px;padding:0 6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+button{font:600 13px inherit;font-family:inherit;color:var(--tx);padding:10px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--card);cursor:pointer;transition:.18s}
+button:hover{transform:translateY(-2px);border-color:var(--p);box-shadow:0 8px 18px rgba(139,123,255,.25)}
+button.pri{background:linear-gradient(135deg,var(--p),var(--b));border:0;color:#fff}
+pre{margin:0;font:12.5px/1.75 var(--mono);color:var(--tx2);white-space:pre-wrap;overflow-x:auto}
+.cl{display:block;padding:0 8px;border-left:3px solid transparent;border-radius:4px;transition:.2s}
+.cl.on{background:rgba(255,181,71,.15);border-left-color:var(--o);color:var(--tx);font-weight:600}
+.kw{color:var(--p)}.out{font:12.5px/1.8 var(--mono);color:var(--tx);background:rgba(0,0,0,.25);border-radius:10px;padding:10px 12px;white-space:pre-wrap}.out b{color:var(--g)}
+@media(max-width:820px){.main{grid-template-columns:1fr}.pipe{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:repeat(2,1fr)}}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}@media(max-width:820px){.two{grid-template-columns:1fr}}
+.pipe8{grid-template-columns:repeat(8,1fr)}.pipe8 .chip{font-size:11px;padding:8px}.stats6{grid-template-columns:repeat(6,1fr)}@media(max-width:1000px){.pipe8{grid-template-columns:repeat(4,1fr)}}@media(max-width:820px){.stats6{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><div class="app">
+<h1>dqn(env) · live code walkthrough</h1>
+<p class="sub">A real 6→64→64→4 neural network, trained in your browser. It replaces the Q-table: instead of looking up Q[s,a], the network <b>predicts</b> Q(x,·) from 6 position features, learns from random replay minibatches, and bootstraps from a slowly-updated target network.</p>
+<div class="pipe pipe8" id="chips">
+<div class="chip" data-k="0"><b>1</b>init nets, buffer</div><div class="chip" data-k="1"><b>2</b>ε, reset, x</div><div class="chip" data-k="2"><b>3</b>ε-greedy via q(x)</div><div class="chip" data-k="3"><b>4</b>env.step(a)</div>
+<div class="chip" data-k="4"><b>5</b>store in buffer</div><div class="chip" data-k="5"><b>6</b>sample batch, target y</div><div class="chip" data-k="6"><b>7</b>loss, backprop, Adam</div><div class="chip" data-k="7"><b>8</b>sync target net?</div></div>
+<div class="stats stats6">
+<div class="stat"><span>Episode</span><b id="sEp">0</b><div class="bar"><i id="pEp" style="background:var(--p)"></i></div></div>
+<div class="stat"><span>Global step</span><b id="sSt">0</b></div>
+<div class="stat"><span>ε explore</span><b id="sEps">1.000</b><div class="bar"><i id="pEps" style="background:var(--o)"></i></div></div>
+<div class="stat"><span>Replay buffer</span><b id="sBuf">0</b><div class="bar"><i id="pBuf" style="background:var(--b)"></i></div></div>
+<div class="stat"><span>Last loss</span><b id="sLoss" style="font-size:20px;line-height:30px">–</b></div>
+<div class="stat"><span>Success (50)</span><b id="sSucc">–</b><div class="bar"><i id="pSucc" style="background:var(--g)"></i></div></div></div>
+<div class="main">
+<div class="card gridcard"><svg id="grid" viewBox="0 0 404 404"></svg>
+<div class="legend"><span><i style="background:var(--g)"></i>high max Q</span><span><i style="background:var(--r)"></i>low max Q</span><span><i style="background:#555c7a"></i>obstacle</span><span><i style="background:var(--p)"></i>robot</span><span><i style="background:var(--b)"></i>greedy path (when done)</span></div>
+<div class="legend" style="margin-top:2px">Arrows = argmax of the network's current output, recomputed live.</div></div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div class="card"><p class="lab">dqn() · highlighted line runs now</p><pre id="code">
+<span class="cl" data-k="0">q, qt = QNet(), QNet(); qt.load_state_dict(q.state_dict()); opt = Adam(q.parameters(), lr)</span><span class="cl" data-k="0">buf = deque(maxlen=buf_size)</span><span class="cl" data-k="1">eps = max(0.05, 1 - ep / (0.6 * episodes)); s = env.reset(); x = env.features(env.p)</span><span class="cl" data-k="2">if rng.random() &lt; eps: a = int(rng.integers(4))</span><span class="cl" data-k="2">else: a = int(q(torch.tensor(x)).argmax())</span><span class="cl" data-k="3">s2, r, done, ok = env.step(a); x2 = env.features(env.p)</span><span class="cl" data-k="4">buf.append((x, a, r, x2, float(done and env.t &lt; env.max_steps))); x, tot = x2, tot + r; step += 1</span><span class="cl" data-k="5">if len(buf) &gt;= 500: bx, ba, br, bx2, bd = ... random.sample(buf, batch)</span><span class="cl" data-k="5">    y = br + gamma * (1 - bd) * qt(bx2).max(1).values</span><span class="cl" data-k="6">    loss = smooth_l1_loss(q(bx).gather(1, ba[:, None])[:, 0], y)</span><span class="cl" data-k="6">    opt.zero_grad(); loss.backward(); opt.step(); losses.append(loss.item())</span><span class="cl" data-k="7">if step % target_every == 0: qt.load_state_dict(q.state_dict())</span></pre></div>
+<div class="card"><p class="lab">What's happening</p><p id="ttl">Press “Next step” to begin</p>
+<div id="lines" style="min-height:120px">A fresh QNet has random weights, so its policy (arrows) is random noise. Watch it become a map.</div></div></div></div>
+<div class="card" style="margin-top:14px"><p class="lab" id="nlab">Inside q(x): features → hidden layer 1 → hidden layer 2 → Q-values (live activations for the robot's cell)</p><svg id="net" viewBox="0 0 900 210" width="100%"></svg></div>
+<div class="two"><div class="card"><p class="lab">Reward per episode (50-ep mean): DQN vs tabular Q-learning</p><svg id="c1" viewBox="0 0 640 110" width="100%" height="110" preserveAspectRatio="none"></svg><div class="legend" id="lg1"></div></div>
+<div class="card"><p class="lab">Training loss (smooth L1, 100-step mean, log scale)</p><svg id="c2" viewBox="0 0 640 110" width="100%" height="110" preserveAspectRatio="none"></svg><div class="legend" id="lg2"></div></div></div>
+<div class="card" style="margin-top:14px"><p class="lab">Replay buffer · newest transitions (training starts once len(buf) ≥ 500)</p><div class="out" id="buf"></div></div>
+<div class="card" style="margin-top:14px"><p class="lab">Notebook output</p><div class="out" id="out"></div></div>
+<div class="btns"><button class="pri" id="bNext">Next step ▸</button><button id="bPlay">▶ Play</button><button id="bEp">Finish episode</button><button id="b10">Train 10 episodes</button><button id="bAll">Train all 500</button><button id="bStop">■ Stop</button><button id="bReset">↺ Reset</button></div>
+</div>
+<script>
+const N=6,OBS=new Set(['1,1','2,1','3,3','4,3','1,4','3,0','4,5']),SLIP=0.1,GM=0.95,EPIS=500,LR=1e-3,BATCH=64,CAP=20000,TGT=200,WARM=500,MAXS=50,H=64;
+const MV=[[0,1],[1,0],[0,-1],[-1,0]],AR=['↑','→','↓','←'],$=id=>document.getElementById(id);
+const pos=i=>[i%N,Math.floor(i/N)],idx=(x,y)=>y*N+x;
+const f=v=>(v<0?'−':'')+Math.abs(v).toFixed(2);const P=p=>'('+p[0]+','+p[1]+')';
+const CS=64,cx=x=>10+x*CS,cy=y=>10+(5-y)*CS;
+function move(p,a){const q=[Math.min(Math.max(p[0]+MV[a][0],0),N-1),Math.min(Math.max(p[1]+MV[a][1],0),N-1)];if(OBS.has(q+''))return[p,-10,false];if(q[0]==5&&q[1]==5)return[q,10,true];return[q,-1,false]}
+const isT=i=>{const[x,y]=pos(i);return OBS.has(x+','+y)||(x==5&&y==5)};
+const STATES=[...Array(36).keys()].filter(i=>!isT(i));
+function mk(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const FN=['x','y','5−x','5−y','dist','1'];
+const feat=s=>{const[x,y]=pos(s);return[x/5,y/5,(5-x)/5,(5-y)/5,((5-x)+(5-y))/10,1]};
+/* ---- tiny neural net: Linear(6,64)-ReLU-Linear(64,64)-ReLU-Linear(64,4) ---- */
+const SH=[[6,H],[H],[H,H],[H],[H,4],[4]];
+function newNet(r){const p=[];for(let k=0;k<6;k++){const n=SH[k].reduce((a,b)=>a*b,1),fan=k%2==0?SH[k][0]:SH[k-1][0],bd=1/Math.sqrt(fan),a=new Float32Array(n);for(let i=0;i<n;i++)a[i]=(r()*2-1)*bd;p.push(a)}return p}
+const cloneNet=p=>p.map(a=>a.slice());
+function fwd(p,X,B){const[W1,b1,W2,b2,W3,b3]=p,H1=new Float32Array(B*H),H2=new Float32Array(B*H),Y=new Float32Array(B*4);
+for(let b=0;b<B;b++){const o=b*H;for(let j=0;j<H;j++)H1[o+j]=b1[j];for(let i=0;i<6;i++){const xi=X[b*6+i];for(let j=0;j<H;j++)H1[o+j]+=xi*W1[i*H+j]}for(let j=0;j<H;j++)if(H1[o+j]<0)H1[o+j]=0;
+for(let j=0;j<H;j++)H2[o+j]=b2[j];for(let k=0;k<H;k++){const h=H1[o+k];if(h>0)for(let j=0;j<H;j++)H2[o+j]+=h*W2[k*H+j]}for(let j=0;j<H;j++)if(H2[o+j]<0)H2[o+j]=0;
+for(let j=0;j<4;j++)Y[b*4+j]=b3[j];for(let k=0;k<H;k++){const h=H2[o+k];if(h>0)for(let j=0;j<4;j++)Y[b*4+j]+=h*W3[k*4+j]}}return{H1,H2,Y}}
+const argmax=(a,o=0,n=4)=>{let b=0;for(let i=1;i<n;i++)if(a[o+i]>a[o+b])b=i;return b};
+function backward(p,X,F,dY,B){const[W1,b1,W2,b2,W3,b3]=p,{H1,H2}=F,g=p.map(a=>new Float32Array(a.length)),dH2=new Float32Array(B*H),dH1=new Float32Array(B*H);
+for(let b=0;b<B;b++){const o=b*H;for(let j=0;j<4;j++)g[5][j]+=dY[b*4+j];
+for(let k=0;k<H;k++){const h=H2[o+k];if(h>0){let s=0;for(let j=0;j<4;j++){g[4][k*4+j]+=h*dY[b*4+j];s+=dY[b*4+j]*W3[k*4+j]}dH2[o+k]=s}}
+for(let j=0;j<H;j++)g[3][j]+=dH2[o+j];
+for(let k=0;k<H;k++){const h=H1[o+k];if(h>0){let s=0;for(let j=0;j<H;j++){const d=dH2[o+j];g[2][k*H+j]+=h*d;s+=d*W2[k*H+j]}dH1[o+k]=s}}
+for(let j=0;j<H;j++)g[1][j]+=dH1[o+j];for(let i=0;i<6;i++){const xi=X[b*6+i];for(let j=0;j<H;j++)g[0][i*H+j]+=xi*dH1[o+j]}}return g}
+let Q,TN,Am,Av,aT;function adam(g){aT++;const b1=.9,b2=.999,c1=1-Math.pow(b1,aT),c2=1-Math.pow(b2,aT);for(let k=0;k<6;k++){const w=Q[k],m=Am[k],v=Av[k],gg=g[k];for(let i=0;i<w.length;i++){m[i]=b1*m[i]+(1-b1)*gg[i];v[i]=b2*v[i]+(1-b2)*gg[i]*gg[i];w[i]-=LR*(m[i]/c1)/(Math.sqrt(v[i]/c2)+1e-8)}}}
+/* ---- state ---- */
+let ra,re,rs,bX,bX2,bA,bR,bD,bS,bS2,bN,bP,rewards,succ,losses,ep,step,s,t,tot,eps,x,stage,c,trainMs=0,timer=null,running=false,qlRew=null,viRef=null;
+function qlearn(E){const r1=mk(0),r2=mk(100),Qt=Array.from({length:36},()=>[0,0,0,0]),R=[];for(let e=0;e<E;e++){const ep_=Math.max(0.05,1-e/(0.6*E));let s=0,t=0,tot=0,done=false;while(!done){const rr=Qt[s];let a=r1()<ep_?Math.floor(r1()*4):argmax(rr);let b=a;if(r2()<SLIP)b=Math.floor(r2()*4);const[q,r,d]=move(pos(s),b),s2=idx(q[0],q[1]);t++;done=d||t>=MAXS;Qt[s][a]+=0.2*((r+(d&&t<MAXS?0:GM*Math.max(...Qt[s2])))-Qt[s][a]);s=s2;tot+=r}R.push(tot)}return R}
+function viOpt(){let V=new Array(36).fill(0);const qv=(W,i,a)=>{let sm=0;for(let b=0;b<4;b++){const[q,r,d]=move(pos(i),b);sm+=((b==a?1-SLIP:0)+SLIP/4)*(r+GM*W[idx(q[0],q[1])]*(d?0:1))}return sm};for(let n=0;n<500;n++){const Vn=V.slice();STATES.forEach(i=>{Vn[i]=Math.max(...[0,1,2,3].map(a=>qv(V,i,a)))});V=Vn}const pi=[...Array(36).keys()].map(i=>argmax([0,1,2,3].map(a=>qv(V,i,a))));return{V,pi,qv}}
+function init(){ra=mk(0);re=mk(100);rs=mk(7);Q=newNet(mk(1234));TN=cloneNet(Q);Am=Q.map(a=>new Float32Array(a.length));Av=Q.map(a=>new Float32Array(a.length));aT=0;
+bX=new Float32Array(CAP*6);bX2=new Float32Array(CAP*6);bA=new Int8Array(CAP);bR=new Float32Array(CAP);bD=new Float32Array(CAP);bS=new Int8Array(CAP);bS2=new Int8Array(CAP);bN=0;bP=0;
+rewards=[];succ=[];losses=[];ep=0;step=0;s=0;t=0;tot=0;eps=1;x=feat(0);stage=0;c={};trainMs=0;
+$('ttl').textContent='Press “Next step” to begin';$('lines').innerHTML='A fresh QNet has random weights, so its policy (arrows) is random noise. Watch it become a map.';render(-1)}
+function doStage(){let T='',L=[];const k=stage;
+if(stage==0){T='q, qt = QNet(), QNet(); qt.load_state_dict(q.state_dict()); buf = deque(maxlen=20000)';L=['q and qt start with <b>identical random weights</b>','parameters: (6·64+64) + (64·64+64) + (64·4+4) = <b>4,868</b>','Adam(lr = 1e-3);  empty replay buffer, capacity 20,000'];stage=1}
+else if(stage==1){eps=Math.max(0.05,1-ep/(0.6*EPIS));s=0;t=0;tot=0;x=feat(0);T='eps = max(0.05, 1 − ep/(0.6·episodes)); s = env.reset(); x = env.features(env.p)';
+L=['episode '+(ep+1)+': ε = max(0.05, 1 − '+ep+'/300) = <b>'+eps.toFixed(3)+'</b>','robot at start (0,0)','x = features = ['+x.map(v=>v.toFixed(2)).join(', ')+']'];stage=2}
+else if(stage==2){c={};const u=ra();let L2;if(u<eps){c.a=Math.floor(ra()*4);c.exp=true;L2=['random u = '+u.toFixed(3)+' &lt; ε = '+eps.toFixed(3),'→ <b>explore</b>: random action '+AR[c.a]]}else{const Y=fwd(Q,Float32Array.from(x),1).Y;c.a=argmax(Y);c.qs=Array.from(Y);L2=['random u = '+u.toFixed(3)+' ≥ ε = '+eps.toFixed(3),'→ <b>exploit</b>: forward pass q(x) = ['+c.qs.map((v,i)=>AR[i]+' '+f(v)).join(', ')+']','→ argmax = <b>'+AR[c.a]+'</b>']}
+T='a = rng.integers(4) if rng.random() &lt; eps else q(x).argmax()';L=['robot at '+P(pos(s))+', step t = '+t].concat(L2);stage=3}
+else if(stage==3){const u=re();let b=c.a,sl;if(u<SLIP){b=Math.floor(re()*4);sl='slip roll '+u.toFixed(3)+' &lt; 0.1 → <b>wheels slip</b>, execute '+AR[b]}else sl='slip roll '+u.toFixed(3)+' ≥ 0.1 → executes '+AR[b];
+const p=pos(s),[q,r,d]=move(p,b);t++;c.s2=idx(q[0],q[1]);c.x2=feat(c.s2);c.r=r;c.ok=d;c.done=d||t>=MAXS;c.from=s;
+T='s2, r, done, ok = env.step(a); x2 = env.features(env.p)';L=[sl,P(p)+' → '+P(q)+(r==-10?'   (obstacle bump)':d?'   (goal!)':''),'r = <b>'+r+'</b>, t = '+t+'/50, done = '+(c.done?'True':'False'),'x2 = ['+c.x2.map(v=>v.toFixed(2)).join(', ')+']'];stage=4}
+else if(stage==4){const term=(c.done&&t<MAXS)?1:0,i=bP;bX.set(x,i*6);bX2.set(c.x2,i*6);bA[i]=c.a;bR[i]=c.r;bD[i]=term;bS[i]=s;bS2[i]=c.s2;bP=(bP+1)%CAP;bN=Math.min(bN+1,CAP);c.term=term;s=c.s2;x=c.x2;tot+=c.r;step++;
+T='buf.append((x, a, r, x2, float(done and env.t &lt; env.max_steps))); x, tot = x2, tot + r; step += 1';L=['stored (x, '+AR[c.a]+', r='+c.r+', x2, terminal='+term+')',term?'terminal=1: true end, so no bootstrapping later':'terminal=0 (time-out also counts as non-terminal)','len(buf) = <b>'+bN+'</b>,  step = '+step,'tot = '+tot];stage=5}
+else if(stage==5){c.skip=bN<WARM;
+if(c.skip){T='if len(buf) &gt;= 500: ...';L=['len(buf) = '+bN+' &lt; 500 → <b>warm-up</b>, no learning yet','the network only collects experience for now']}
+else{const ix=new Set();while(ix.size<BATCH)ix.add(Math.floor(rs()*bN));const I=[...ix],X=new Float32Array(BATCH*6),X2=new Float32Array(BATCH*6),A=new Int8Array(BATCH),R=new Float32Array(BATCH),D=new Float32Array(BATCH);
+I.forEach((j,b)=>{X.set(bX.subarray(j*6,j*6+6),b*6);X2.set(bX2.subarray(j*6,j*6+6),b*6);A[b]=bA[j];R[b]=bR[j];D[b]=bD[j]});
+const tq=fwd(TN,X2,BATCH).Y,y=new Float32Array(BATCH);let my=0;for(let b=0;b<BATCH;b++){y[b]=R[b]+GM*(1-D[b])*Math.max(tq[b*4],tq[b*4+1],tq[b*4+2],tq[b*4+3]);my+=y[b]/BATCH}
+c.B={X,A,y};T='bx, ba, br, bx2, bd = random.sample(buf, 64);  y = br + gamma·(1 − bd)·qt(bx2).max(1)';
+L=['random minibatch of <b>64</b> transitions (breaks time correlation)','target net qt (frozen copy) predicts max Q at each x2','sample #0: r = '+R[0]+', terminal = '+D[0]+', max qt(x2) = '+f(Math.max(tq[0],tq[1],tq[2],tq[3]))+' → y = <b>'+f(y[0])+'</b>','mean target y = '+f(my)]}stage=6}
+else if(stage==6){if(c.skip){T='loss.backward(); opt.step()';L=['skipped during warm-up']}else{const{X,A,y}=c.B,F=fwd(Q,X,BATCH),dY=new Float32Array(BATCH*4);let loss=0,mp=0;
+for(let b=0;b<BATCH;b++){const d=F.Y[b*4+A[b]]-y[b],ad=Math.abs(d);loss+=(ad<1?0.5*d*d:ad-0.5)/BATCH;dY[b*4+A[b]]=Math.max(-1,Math.min(1,d))/BATCH;mp+=F.Y[b*4+A[b]]/BATCH}
+adam(backward(Q,X,F,dY,BATCH,));losses.push(loss);c.loss=loss;T='loss = smooth_l1_loss(q(bx).gather(1, ba), y); opt.zero_grad(); loss.backward(); opt.step()';
+L=['q(x,a) for the batch: mean prediction = '+f(mp),'smooth-L1 loss vs target y = <b>'+loss.toFixed(4)+'</b>','backprop through 3 Linear layers (gradient only flows to the action taken)','Adam step: all 4,868 weights nudged slightly toward y']}stage=7}
+else{const sync=step%TGT===0;if(sync)TN=cloneNet(Q);T='if step % target_every == 0: qt.load_state_dict(q.state_dict())';
+L=sync?['step = '+step+', '+step+' % 200 == 0 → <b>qt ← q</b> (target network refreshed)']:['step = '+step+', step % 200 = '+(step%TGT)+' → target net unchanged','qt stays frozen for '+(TGT-step%TGT)+' more steps (stabilises targets)'];
+if(c.done){rewards.push(tot);succ.push(c.ok?1:0);L.push('episode over: '+(c.ok?'goal reached 🎉':'time limit')+', total reward '+tot);ep++;stage=ep>=EPIS?-1:1}else stage=2}
+return{k,T,L}}
+/* ---- rendering ---- */
+function policy(){const X=new Float32Array(36*6);for(let i=0;i<36;i++)X.set(feat(i),i*6);const Y=fwd(Q,X,36).Y,pi=[],mq=[];for(let i=0;i<36;i++){const a=argmax(Y,i*4);pi.push(a);mq.push(Y[i*4+a])}return{pi,mq}}
+function gpath(pi){const p=[0];let q=0;for(let n=0;n<30;n++){const nx=move(pos(q),pi[q])[0],y=idx(nx[0],nx[1]);if(y===q||p.includes(y))break;p.push(y);q=y;if(y===35)break}return p}
+const roll=(a,w)=>a.map((_,i)=>i<w-1?null:a.slice(i-w+1,i+1).reduce((p,q)=>p+q,0)/w);
+function chart(id,lg,S,o){const vals=S.flatMap(z=>z.v.filter(v=>v!=null));if(!vals.length){$(id).innerHTML='';$(lg).innerHTML='';return}
+const tr=o.log?(v=>Math.log10(Math.max(v,1e-9))):(v=>v),A=vals.map(tr),mn=Math.min(...A),mx=Math.max(...A),rg=(mx-mn)||1,xm=o.xmax||Math.max(...S.map(z=>z.v.length));let svg='';
+S.forEach(z=>{const pts=[];z.v.forEach((v,i)=>{if(v!=null)pts.push((i/Math.max(1,xm-1)*640).toFixed(1)+','+(100-(tr(v)-mn)/rg*90).toFixed(1))});if(pts.length>1)svg+='<polyline fill="none" stroke="'+z.c+'" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="'+pts.join(' ')+'"/>'});
+$(id).innerHTML=svg;$(lg).innerHTML=S.map(z=>'<span><i style="background:'+z.c+'"></i>'+z.n+'</span>').join('')+'<span>y: '+(o.log?'1e':'')+(o.log?Math.round(mn):mn.toFixed(0))+' … '+(o.log?'1e'+Math.round(mx):mx.toFixed(0))+'</span>'}
+function netSVG(xs,a){const xf=Float32Array.from(feat(xs)),F=fwd(Q,xf,1);let g='';
+const grid=(h,x0,y0)=>{const m=Math.max(...h,1e-6);let r='';for(let i=0;i<H;i++){const v=h[i]/m;r+='<rect x="'+(x0+(i%8)*17)+'" y="'+(y0+Math.floor(i/8)*17)+'" width="15" height="15" rx="3" fill="#8b7bff" fill-opacity="'+(0.07+0.93*v).toFixed(2)+'"/>'}return r};
+const ln=(x1,y1,x2,y2)=>'<path d="M'+x1+' '+y1+' C'+(x1+60)+' '+y1+' '+(x2-60)+' '+y2+' '+x2+' '+y2+'" fill="none" stroke="var(--mut)" stroke-opacity=".22"/>';
+for(let i=0;i<6;i++){g+=ln(150,28+i*27,290,95);}g+=ln(430,95,555,95)+ln(695,95,800,95);
+for(let j=0;j<4;j++)g+=ln(695,95,800,46+j*40);
+for(let i=0;i<6;i++){const v=xf[i];g+='<text x="10" y="'+(32+i*27)+'" font-size="12" fill="var(--tx2)">'+FN[i]+'</text><rect x="52" y="'+(21+i*27)+'" width="98" height="14" rx="4" fill="var(--bd)"/><rect x="52" y="'+(21+i*27)+'" width="'+(98*Math.min(1,v)).toFixed(1)+'" height="14" rx="4" fill="#4cc2ff"/><text x="58" y="'+(32+i*27)+'" font-size="11" fill="var(--tx)">'+v.toFixed(2)+'</text>'}
+g+=grid(F.H1,290,27)+grid(F.H2,555,27);
+const Y=Array.from(F.Y),best=a>=0?a:argmax(Y);
+for(let j=0;j<4;j++){const v=Y[j],w=Math.min(1,Math.abs(v)/10)*60,y0=34+j*40;g+='<text x="800" y="'+(y0-2)+'" font-size="16" fill="'+(j===best?'#ffb547':'var(--tx2)')+'">'+AR[j]+'</text><rect x="822" y="'+(y0-14)+'" width="120" height="16" rx="4" fill="var(--bd)"/><rect x="'+(v>=0?882:882-w)+'" y="'+(y0-14)+'" width="'+w+'" height="16" rx="4" fill="'+(v>=0?'#2ee6a6':'#ff5d73')+'"/><text x="826" y="'+(y0-2)+'" font-size="11" fill="var(--tx)">'+f(v)+'</text>'+(j===best?'<rect x="818" y="'+(y0-18)+'" width="128" height="24" rx="6" fill="none" stroke="#ffb547" stroke-width="2"/>':'')}
+g+='<text x="10" y="200" font-size="11" fill="var(--tx2)">input x (6)</text><text x="290" y="180" font-size="11" fill="var(--tx2)">hidden 1: 64 ReLU units</text><text x="555" y="180" font-size="11" fill="var(--tx2)">hidden 2: 64 ReLU units</text><text x="800" y="200" font-size="11" fill="var(--tx2)">Q(x,a) outputs</text>';
+return g}
+const DEFS='<defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ee6a6"/><stop offset="1" stop-color="#0aa77a"/></linearGradient><pattern id="rk" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#3a4160"/><rect width="3" height="8" fill="#2d3350"/></pattern><radialGradient id="rb"><stop offset="0" stop-color="#b9afff"/><stop offset="1" stop-color="#6c5ce7"/></radialGradient></defs>';
+$('grid').innerHTML=DEFS+'<g id="cells"></g><g id="path"></g><g id="bot" style="transform:translate(39px,341px)"><circle r="17" fill="#8b7bff" opacity=".25"/><circle r="12" fill="url(#rb)" stroke="#fff" stroke-width="2"/><circle cx="-4" cy="-3" r="2.2" fill="#fff"/><circle cx="4" cy="-3" r="2.2" fill="#fff"/><rect x="-4" y="3" width="8" height="2" rx="1" fill="#fff"/></g>';
+function render(k){document.querySelectorAll('.chip,.cl').forEach(e=>e.classList.toggle('on',+e.dataset.k===k));
+const L50=succ.slice(-50),sp=L50.length?Math.round(100*L50.reduce((a,b)=>a+b,0)/L50.length):null,fin=stage<0;
+$('sEp').textContent=ep;$('pEp').style.width=100*ep/EPIS+'%';$('sSt').textContent=step;$('sEps').textContent=eps.toFixed(3);$('pEps').style.width=100*eps+'%';$('sBuf').textContent=bN;$('pBuf').style.width=100*bN/CAP+'%';
+$('sLoss').textContent=losses.length?losses[losses.length-1].toFixed(3):'–';$('sSucc').textContent=sp===null?'–':sp+'%';$('pSucc').style.width=(sp||0)+'%';
+const dispS=stage===4&&c.s2!==undefined?c.s2:s,{pi,mq}=policy();let g='';
+for(let i=0;i<36;i++){const[x_,y_]=pos(i),X=cx(x_),Y=cy(y_),m=CS-6;
+if(OBS.has(x_+','+y_)){g+='<rect x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="url(#rk)" stroke="#555c7a"/><text x="'+(X+m/2)+'" y="'+(Y+m/2+8)+'" text-anchor="middle" font-size="22" opacity=".6">🪨</text>';continue}
+if(x_==5&&y_==5){g+='<g class="goal"><rect x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="url(#gg)"/><text x="'+(X+m/2)+'" y="'+(Y+m/2+10)+'" text-anchor="middle" font-size="30" fill="#fff">★</text></g>';continue}
+const v=mq[i],pos_=v>=0,op=0.12+0.7*Math.min(1,Math.abs(v)/10),hl=i===dispS&&k>=2;
+g+='<rect class="'+(hl?'pulse':'')+'" x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="'+(pos_?'#2ee6a6':'#ff5d73')+'" fill-opacity="'+op.toFixed(2)+'" stroke="'+(hl?'#ffb547':'rgba(150,160,200,.25)')+'" stroke-width="'+(hl?3:1)+'"/><text x="'+(X+m/2)+'" y="'+(Y+m/2-2)+'" text-anchor="middle" font-size="22" font-weight="700" fill="var(--tx)">'+AR[pi[i]]+'</text><text x="'+(X+m/2)+'" y="'+(Y+m/2+16)+'" text-anchor="middle" font-size="11" fill="var(--tx2)">'+f(v)+'</text>'}
+$('cells').innerHTML=g;
+$('path').innerHTML=fin?(()=>{const gp=gpath(pi);return gp.length>1?'<polyline points="'+gp.map(i=>{const q=pos(i);return(cx(q[0])+29)+','+(cy(q[1])+29)}).join(' ')+'" fill="none" stroke="#4cc2ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>':''})():'';
+const rp=pos(dispS);$('bot').style.transform='translate('+(cx(rp[0])+29)+'px,'+(cy(rp[1])+29)+'px)';
+$('net').innerHTML=netSVG(dispS,k>=2&&c.a!==undefined?c.a:-1);
+if(!qlRew)qlRew=qlearn(3000).slice(0,EPIS);
+chart('c1','lg1',[{v:roll(rewards,50),c:'#8b7bff',n:'DQN'},{v:roll(qlRew,50),c:'#ffb547',n:'Q-learning (first 500 ep)'}],{xmax:EPIS});
+const lw=100,lm=losses.length>lw?roll(losses,lw).filter((_,i)=>i%Math.max(1,Math.floor(losses.length/300))===0):[];chart('c2','lg2',[{v:lm,c:'#4cc2ff',n:'loss'}],{log:true});
+let bt='';for(let n=0;n<4&&n<bN;n++){const j=(bP-1-n+CAP)%CAP;bt+='(s='+P(pos(bS[j]))+', a='+AR[bA[j]]+', r='+bR[j]+', s2='+P(pos(bS2[j]))+', terminal='+bD[j]+')\n'}
+$('buf').innerHTML='len(buf) = <b>'+bN+'</b> / 20000'+(bN<WARM?'   · warm-up: '+(WARM-bN)+' more transitions before learning starts':'   · learning on random minibatches of 64')+'\n'+(bt||'(empty)');
+const o=[fin?'DQN: <b>'+EPIS+'</b> episodes in <b>'+(trainMs/1000).toFixed(1)+'s</b>':'DQN: '+ep+' / '+EPIS+' episodes'+(trainMs>0?' ('+(trainMs/1000).toFixed(1)+'s of fast-forward compute)':'')];
+o.push('greedy action at start state: <b>'+AR[pi[0]]+'</b>   ·   success rate (last 50 episodes): '+(sp===null?'–':sp+'%'));
+if(fin){if(!viRef)viRef=viOpt();let m=0;STATES.forEach(i=>{if(pi[i]===viRef.pi[i]||viRef.qv(viRef.V,i,pi[i])>=viRef.V[i]-1e-3)m++});o.push('policy matches the value-iteration optimum (up to ties) on <b>'+m+' / '+STATES.length+'</b> free cells')}
+$('out').innerHTML=o.join('\n')}
+/* ---- controls ---- */
+function step_(){if(stage<0||running)return;const o=doStage();$('ttl').innerHTML=o.T;$('lines').innerHTML=o.L.join('<br>');render(o.k)}
+function stopAll(){if(running){$('ttl').textContent='Paused';$('lines').innerHTML='Stopped at episode '+ep+', step '+step+'. Press “Next step” to continue line by line.'}running=false;if(timer){clearInterval(timer);timer=null;$('bPlay').textContent='▶ Play'}}
+function runAsync(until){if(running)return;stopAll();running=true;let lastR=0;$('ttl').textContent='Training in your browser…';
+(function tick(){if(!running)return;const t0=performance.now();while(performance.now()-t0<30&&stage>=0&&!until())doStage();trainMs+=performance.now()-t0;const dn=stage<0||until();
+if(dn||performance.now()-lastR>200){render(-1);lastR=performance.now()}
+if(dn){running=false;$('ttl').textContent=stage<0?'Training finished':'Fast-forwarded';$('lines').innerHTML=stage<0?'All 500 episodes done. The blue line is the greedy path of the learned network.':'Now at episode '+ep+', step '+step+'. Press “Next step” to continue line by line.';return}setTimeout(tick,0)})()}
+$('bNext').onclick=()=>{stopAll();step_()};
+$('bPlay').onclick=()=>{if(timer){stopAll();return}if(running)return;timer=setInterval(step_,500);$('bPlay').textContent='⏸ Pause'};
+$('bEp').onclick=()=>{const e=ep;runAsync(()=>ep!==e)};$('b10').onclick=()=>{const e=ep+10;runAsync(()=>ep>=e)};$('bAll').onclick=()=>runAsync(()=>false);
+$('bStop').onclick=stopAll;$('bReset').onclick=()=>{stopAll();init()};
+init();
+</script></body></html>

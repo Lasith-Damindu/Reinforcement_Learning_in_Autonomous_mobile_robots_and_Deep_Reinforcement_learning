@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>value_iteration() — Code Walkthrough</title>
+<style>
+:root{--bg:#0b1020;--bg2:#121a33;--card:rgba(255,255,255,.055);--bd:rgba(255,255,255,.1);--tx:#eef1fb;--tx2:#9aa6c7;--mut:#66719a;
+--g:#2ee6a6;--r:#ff5d73;--o:#ffb547;--p:#8b7bff;--b:#4cc2ff;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media(prefers-color-scheme:light){:root{--bg:#eef1fb;--bg2:#fff;--card:rgba(255,255,255,.8);--bd:rgba(20,30,70,.12);--tx:#141a33;--tx2:#4a5578;--mut:#7c87a8;--g:#0aa77a;--r:#e0364f;--o:#e08a00;--p:#6a58f0;--b:#1b8fd6}}
+*{box-sizing:border-box}
+body{margin:0;padding:22px;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--tx);min-height:100vh;
+background:radial-gradient(900px 500px at 10% -10%,rgba(139,123,255,.25),transparent 60%),radial-gradient(800px 500px at 100% 0,rgba(46,230,166,.15),transparent 60%),var(--bg)}
+.app{max-width:1060px;margin:auto}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.4px;background:linear-gradient(90deg,var(--p),var(--b),var(--g));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--tx2);font-size:13px;margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:14px 16px;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.lab{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--tx2);margin:0 0 8px;font-weight:600}
+.pipe{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
+.chip{position:relative;padding:9px 10px;border-radius:12px;border:1px solid var(--bd);background:var(--card);font-size:12px;color:var(--tx2);transition:.25s}
+.chip b{display:block;font-size:10px;color:var(--mut);margin-bottom:2px}
+.chip.on{color:var(--tx);border-color:var(--p);background:linear-gradient(135deg,rgba(139,123,255,.3),rgba(76,194,255,.15));box-shadow:0 0 0 3px rgba(139,123,255,.2),0 8px 22px rgba(139,123,255,.3);transform:translateY(-3px)}
+.chip.on b{color:var(--p)}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.stat{padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--bd)}
+.stat span{font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.6px}
+.stat b{display:block;font-size:24px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.bar{height:5px;border-radius:3px;background:var(--bd);margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;width:0;border-radius:3px;transition:width .4s}
+.main{display:grid;grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:14px}
+.gridcard{padding:10px}
+#grid{width:100%;height:auto;display:block}
+#bot{transition:transform .45s cubic-bezier(.34,1.4,.64,1)}
+.pulse{animation:pl 1s ease-in-out infinite}@keyframes pl{50%{opacity:.35}}
+.dash{stroke-dasharray:7 6;animation:dh .6s linear infinite}@keyframes dh{to{stroke-dashoffset:-13}}
+.goal{animation:gl 2s ease-in-out infinite}@keyframes gl{50%{filter:drop-shadow(0 0 8px var(--g))}}
+#ttl{font-family:var(--mono);font-size:12.5px;color:var(--o);margin:0 0 8px;min-height:18px}
+#lines{font-family:var(--mono);font-size:12.5px;line-height:1.8;min-height:104px;color:var(--tx)}
+#lines b{color:var(--g)}
+.q{display:grid;grid-template-columns:24px 1fr 60px;gap:8px;align-items:center;margin:7px 0;font-size:13px}
+.qb{height:12px;border-radius:6px;background:var(--bd);position:relative;overflow:hidden}
+.qb i{position:absolute;top:0;bottom:0;left:0;border-radius:6px;transition:width .35s}
+.q.sel{color:var(--o);font-weight:700}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--tx2);margin-top:6px;padding:0 6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+button{font:600 13px inherit;font-family:inherit;color:var(--tx);padding:10px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--card);cursor:pointer;transition:.18s}
+button:hover{transform:translateY(-2px);border-color:var(--p);box-shadow:0 8px 18px rgba(139,123,255,.25)}
+button.pri{background:linear-gradient(135deg,var(--p),var(--b));border:0;color:#fff}
+pre{margin:0;font:12.5px/1.75 var(--mono);color:var(--tx2);white-space:pre-wrap;overflow-x:auto}
+.cl{display:block;padding:0 8px;border-left:3px solid transparent;border-radius:4px;transition:.2s}
+.cl.on{background:rgba(255,181,71,.15);border-left-color:var(--o);color:var(--tx);font-weight:600}
+.kw{color:var(--p)}.out{font:12.5px/1.8 var(--mono);color:var(--tx);background:rgba(0,0,0,.25);border-radius:10px;padding:10px 12px;white-space:pre-wrap}.out b{color:var(--g)}
+@media(max-width:820px){.main{grid-template-columns:1fr}.pipe{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><div class="app">
+<h1>value_iteration(env) · live code walkthrough</h1>
+<p class="sub">No learning from experience here: the robot's model (10% slip) is known, so every state is updated with the Bellman backup until values stop changing (γ=0.95, tol=1e-6). Step one state at a time, or sweep the whole grid.</p>
+<div class="pipe" id="chips">
+<div class="chip" data-k="0"><b>STEP 1</b>init V, terminal</div><div class="chip" data-k="1"><b>STEP 2</b>Vn = V.copy()</div>
+<div class="chip" data-k="2"><b>STEP 3</b>Bellman backup(i)</div><div class="chip" data-k="3"><b>STEP 4</b>δ, V = Vn</div>
+<div class="chip" data-k="4"><b>STEP 5</b>δ &lt; tol ?</div><div class="chip" data-k="5"><b>STEP 6</b>extract π</div></div>
+<div class="stats">
+<div class="stat"><span>Sweep</span><b id="sSw">0</b></div>
+<div class="stat"><span>State in sweep</span><b id="sPt">0/28</b><div class="bar"><i id="pPt" style="background:var(--b)"></i></div></div>
+<div class="stat"><span>Last δ</span><b id="sD" style="font-size:19px;line-height:30px">–</b><div class="bar"><i id="pD" style="background:var(--o)"></i></div></div>
+<div class="stat"><span>V[start]</span><b id="sV">0.00</b></div>
+<div class="stat"><span>Converged</span><b id="sC">no</b><div class="bar"><i id="pC" style="background:var(--g)"></i></div></div></div>
+<div class="main">
+<div class="card gridcard"><svg id="grid" viewBox="0 0 404 404"></svg>
+<div class="legend"><span><i style="background:var(--g)"></i>high V</span><span><i style="background:var(--r)"></i>low V</span><span><i style="background:#555c7a"></i>terminal (obstacle)</span><span><i style="background:var(--o)"></i>state being backed up</span><span><i style="background:var(--b)"></i>reachable next states / greedy path</span></div></div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div class="card"><p class="lab">value_iteration() · highlighted line runs now</p><pre id="code">
+<span class="cl" data-k="0">V = np.zeros(env.nS); deltas = []</span><span class="cl" data-k="0">terminal = {env.idx(o) for o in env.obs} | {env.idx(env.goal)}</span><span class="cl"><span class="kw">while</span> True:</span><span class="cl" data-k="1">    Vn = V.copy()</span><span class="cl" data-k="2">    <span class="kw">for</span> i <span class="kw">in</span> range(env.nS):</span><span class="cl" data-k="2">        <span class="kw">if</span> i <span class="kw">in</span> terminal: <span class="kw">continue</span></span><span class="cl" data-k="2">        Vn[i] = max(sum(p * (r + gamma * V[j] * (not d)) for p, j, r, d in env.transitions(i, a)) for a in range(4))</span><span class="cl" data-k="3">    deltas.append(np.abs(Vn - V).max()); V = Vn</span><span class="cl" data-k="4">    <span class="kw">if</span> deltas[-1] &lt; tol: <span class="kw">break</span></span><span class="cl" data-k="5">pi = np.array([np.argmax([sum(p*(r+gamma*V[j]*(not d)) for ...) for a in range(4)]) for i in range(env.nS)])</span></pre></div>
+<div class="card"><p class="lab">What's happening</p><p id="ttl">Press “Next step” to begin</p>
+<div id="lines" style="min-height:150px">V starts as zeros(36). Obstacles and the goal are <b>terminal</b>: their value is never updated.</div></div>
+<div class="card"><p class="lab" id="qlab">Action values for the current state</p><div id="qrow"></div></div></div></div>
+<div class="card" style="margin-top:14px"><p class="lab" id="splab">δ per sweep (log scale) · appears after the first sweep</p>
+<svg id="spark" viewBox="0 0 640 110" width="100%" height="110" preserveAspectRatio="none"></svg></div>
+<div class="card" style="margin-top:14px"><p class="lab">Notebook output</p><div class="out" id="out"></div></div>
+<div class="btns"><button class="pri" id="bNext">Next step ▸</button><button id="bPlay">▶ Play</button><button id="bSw">Finish sweep</button><button id="b10">Run 10 sweeps</button><button id="bAll">Run to convergence</button><button id="bReset">↺ Reset</button></div>
+</div>
+<script>
+const N=6,OBS=new Set(['1,1','2,1','3,3','4,3','1,4','3,0','4,5']),SLIP=0.1,GM=0.95,TOL=1e-6;
+const MV=[[0,1],[1,0],[0,-1],[-1,0]],AR=['↑','→','↓','←'],$=id=>document.getElementById(id);
+const pos=i=>[i%N,Math.floor(i/N)],idx=(x,y)=>y*N+x;
+const f=v=>(v<0?'−':'')+Math.abs(v).toFixed(2);const P=p=>'('+p[0]+','+p[1]+')';
+const CS=64,cx=x=>10+x*CS,cy=y=>10+(5-y)*CS;
+function move(p,a){const q=[Math.min(Math.max(p[0]+MV[a][0],0),N-1),Math.min(Math.max(p[1]+MV[a][1],0),N-1)];if(OBS.has(q+''))return[p,-10,false];if(q[0]==5&&q[1]==5)return[q,10,true];return[q,-1,false]}
+const isT=i=>{const[x,y]=pos(i);return OBS.has(x+','+y)||(x==5&&y==5)};
+const STATES=[...Array(36).keys()].filter(i=>!isT(i));
+function trans(i,a){const o=[];for(let b=0;b<4;b++){const[q,r,d]=move(pos(i),b);o.push([(b==a?1-SLIP:0)+SLIP/4,idx(q[0],q[1]),r,d])}return o}
+let V,Vn,deltas,sw,ptr,stage,c,vis,bestA,pi,trainMs=0;
+const qv=(i,a)=>trans(i,a).reduce((s,[p,j,r,d])=>s+p*(r+GM*V[j]*(d?0:1)),0);
+const argmax=r=>{let b=0;for(let i=1;i<r.length;i++)if(r[i]>r[b])b=i;return b};
+function init(){trainMs=0;V=new Array(36).fill(0);Vn=V.slice();deltas=[];sw=0;ptr=0;stage=0;c={};vis=new Array(36).fill(false);bestA=new Array(36).fill(0);pi=null;
+$('ttl').textContent='Press “Next step” to begin';$('lines').innerHTML='V starts as zeros(36). Obstacles and the goal are <b>terminal</b>: their value is never updated.';render(-1)}
+function doStage(){let T='',L=[];const k=stage;
+if(stage==0){T='V = np.zeros(env.nS); terminal = {...}';L=['V = zeros(36), deltas = []','terminal = 7 obstacles + goal = 8 states, V stays 0','→ 28 free states get updated each sweep'];stage=1}
+else if(stage==1){Vn=V.slice();ptr=0;sw++;T='Vn = V.copy()';L=['sweep #'+sw+' begins','Vn is a copy: every backup reads the <b>old</b> V and writes into Vn'];stage=2}
+else if(stage==2){const i=STATES[ptr],qs=[0,1,2,3].map(a=>qv(i,a)),b=argmax(qs);Vn[i]=qs[b];bestA[i]=b;vis[i]=true;ptr++;
+const m={};trans(i,b).forEach(([p,j,r,d])=>{const key=j+'|'+r;(m[key]=m[key]||{p:0,j,r,d}).p+=p});
+T='Vn[i] = max over a of Σ p·(r + γ·V[j]·(not d))';
+L=['state i = '+i+' at '+P(pos(i)),'Q(i,a) = ['+qs.map((q,a)=>AR[a]+' '+f(q)).join(', ')+']','max → <b>'+AR[b]+'</b>, Vn['+i+'] = <b>'+f(qs[b])+'</b>','outcomes of '+AR[b]+':'].concat(Object.values(m).map(o=>'&nbsp;&nbsp;p='+o.p.toFixed(3)+' → '+P(pos(o.j))+'  r='+o.r+'  V='+f(V[o.j])+(o.d?' (goal)':'')));
+c={i,qs,a:b,js:Object.values(m).map(o=>o.j)};if(ptr>=STATES.length)stage=3}
+else if(stage==3){let d=0,at=0;for(let i=0;i<36;i++){const x=Math.abs(Vn[i]-V[i]);if(x>d){d=x;at=i}}deltas.push(d);const old=V[at];V=Vn.slice();c={};
+T='deltas.append(np.abs(Vn - V).max()); V = Vn';L=['largest change at state '+at+' '+P(pos(at))+': '+f(old)+' → '+f(V[at]),'δ = <b>'+d.toExponential(3)+'</b>','V ← Vn  (all '+STATES.length+' states updated together)'];stage=4}
+else if(stage==4){const d=deltas[deltas.length-1];T='if deltas[-1] < tol: break';
+if(d<TOL){L=['δ = '+d.toExponential(3)+' &lt; tol = 1e-6','→ <b>break</b>: values have converged after '+deltas.length+' sweeps'];stage=5}else{L=['δ = '+d.toExponential(3)+' ≥ tol = 1e-6','→ not converged, start another sweep'];stage=1}}
+else{pi=new Array(36).fill(0);STATES.forEach(i=>{pi[i]=argmax([0,1,2,3].map(a=>qv(i,a)));bestA[i]=pi[i]});T='pi = np.array([np.argmax([...Q(i,a)...]) for i in range(env.nS)])';
+L=['one last greedy look-ahead per state using converged V','π(start) = <b>'+AR[pi[0]]+'</b>,  V*(start) = '+f(V[0]),'done: the blue line is the greedy path under π'];stage=-1}
+return{k,T,L}}
+function step(){if(stage<0)return;const o=doStage();$('ttl').innerHTML=o.T;$('lines').innerHTML=o.L.join('<br>');render(o.k)}
+function fast(pred,msg){const T0=performance.now();let n=0;do{doStage();n++}while(stage>=0&&!pred()&&n<400000);trainMs+=performance.now()-T0;c={};$('ttl').textContent='Fast-forwarded';$('lines').innerHTML=msg();render(-1)}
+const msg=()=>stage<0?'Converged: π extracted. Reset to watch again.':'Completed '+deltas.length+' sweeps, last δ = '+(deltas.length?deltas[deltas.length-1].toExponential(3):'–')+'.<br>Press “Next step” to continue state by state.';
+function gpath(){const p=[0];let x=0;for(let n=0;n<36;n++){const q=move(pos(x),pi[x])[0],y=idx(q[0],q[1]);if(y===x||p.includes(y))break;p.push(y);x=y;if(y===35)break}return p}
+const DEFS='<defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ee6a6"/><stop offset="1" stop-color="#0aa77a"/></linearGradient><pattern id="rk" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#3a4160"/><rect width="3" height="8" fill="#2d3350"/></pattern></defs>';
+function render(k){document.querySelectorAll('.chip,.cl').forEach(e=>e.classList.toggle('on',+e.dataset.k===k));
+const d=deltas.length?deltas[deltas.length-1]:null,conv=!!pi;
+$('sSw').textContent=sw;$('sPt').textContent=(stage==2||stage==3?ptr:(stage==1||stage==0?0:STATES.length))+'/'+STATES.length;$('pPt').style.width=100*(stage==2||stage==3?ptr:0)/STATES.length+'%';
+$('sD').textContent=d===null?'–':d.toExponential(2);$('pD').style.width=d===null?0:Math.max(2,Math.min(100,100*(1-(Math.log10(Math.max(d,1e-12))+6)/(Math.log10(deltas[0])+6||1))))+'%';
+$('sV').textContent=f(Vn[0]);$('sC').textContent=conv?'yes ✓':'no';$('pC').style.width=conv?'100%':'0';
+let g=DEFS;for(let i=0;i<36;i++){const[x,y]=pos(i),X=cx(x),Y=cy(y),m=CS-6;
+if(OBS.has(x+','+y)){g+='<rect x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="url(#rk)" stroke="#555c7a"/><text x="'+(X+m/2)+'" y="'+(Y+m/2+8)+'" text-anchor="middle" font-size="22" opacity=".6">🪨</text>';continue}
+if(x==5&&y==5){g+='<g class="goal"><rect x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="url(#gg)"/><text x="'+(X+m/2)+'" y="'+(Y+m/2+10)+'" text-anchor="middle" font-size="30" fill="#fff">★</text></g>';continue}
+const v=Vn[i];let fill='rgba(150,160,200,.1)',op=1;if(vis[i]){if(v>=0){fill='#2ee6a6';op=0.15+0.7*Math.min(1,v/10)}else{fill='#ff5d73';op=0.15+0.65*Math.min(1,-v/10)}}
+const hl=k==2&&c.i===i,nb=k==2&&c.js&&c.js.includes(i)&&!hl;
+g+='<rect class="'+(hl?'pulse':'')+'" x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="'+fill+'" fill-opacity="'+op+'" stroke="'+(hl?'#ffb547':nb?'#4cc2ff':'rgba(150,160,200,.25)')+'" stroke-width="'+(hl?3:nb?2.5:1)+'"/>';
+if(vis[i])g+='<text x="'+(X+m/2)+'" y="'+(Y+m/2-2)+'" text-anchor="middle" font-size="22" font-weight="700" fill="var(--tx)">'+AR[bestA[i]]+'</text><text x="'+(X+m/2)+'" y="'+(Y+m/2+16)+'" text-anchor="middle" font-size="11" fill="var(--tx2)">'+f(v)+'</text>';
+else if(x==0&&y==0)g+='<text x="'+(X+m/2)+'" y="'+(Y+m/2+6)+'" text-anchor="middle" font-size="18" font-weight="700" fill="var(--tx2)">S</text>'}
+if(conv){const gp=gpath();if(gp.length>1)g+='<polyline points="'+gp.map(i=>{const q=pos(i);return(cx(q[0])+29)+','+(cy(q[1])+29)}).join(' ')+'" fill="none" stroke="#4cc2ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>'}
+$('grid').innerHTML=g;
+const qi=c.i!==undefined?c.i:0,qs=c.qs||[0,1,2,3].map(a=>qv(0,a)),ca=c.a!==undefined?c.a:-1;$('qlab').textContent='Q(i,a) = Σ p·(r+γV[j]) for state '+qi+' · cell '+P(pos(qi))+(c.qs?'':' (from current V)');
+let h='';for(let a=0;a<4;a++){const v=qs[a],w=Math.min(50,Math.abs(v)*5);h+='<div class="q'+(a===ca?' sel':'')+'"><span style="font-size:18px">'+AR[a]+'</span><div class="qb"><i style="'+(v>=0?'left:50%;background:linear-gradient(90deg,#0aa77a,#2ee6a6)':'right:50%;left:auto;background:linear-gradient(270deg,#e0364f,#ff5d73)')+';width:'+w+'%"></i><b style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--mut)"></b></div><span style="text-align:right;font-family:var(--mono)">'+f(v)+'</span></div>'}
+$('qrow').innerHTML=h;
+let spk='';if(deltas.length>1){const L=deltas.map(x=>Math.log10(Math.max(x,1e-12))),mn=Math.min(-6.5,...L),mx=Math.max(...L),rg=(mx-mn)||1,Y=v=>(100-(v-mn)/rg*90).toFixed(1),pts=L.map((v,i)=>(i/(L.length-1)*640).toFixed(1)+','+Y(v)).join(' ');
+spk='<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb547" stop-opacity=".5"/><stop offset="1" stop-color="#ffb547" stop-opacity="0"/></linearGradient></defs><polygon points="0,110 '+pts+' 640,110" fill="url(#sg)"/><polyline fill="none" stroke="#ffb547" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="'+pts+'"/><line x1="0" x2="640" y1="'+Y(-6)+'" y2="'+Y(-6)+'" stroke="#2ee6a6" stroke-dasharray="6 5" vector-effect="non-scaling-stroke"/>';
+$('splab').textContent='δ per sweep (log10): '+deltas.length+' sweeps, last δ = '+d.toExponential(2)+' · green dashed line = tol 1e-6'}
+$('spark').innerHTML=spk;
+$('out').innerHTML=(conv?'Value iteration converged in <b>'+deltas.length+'</b> sweeps (<b>'+(trainMs>0?trainMs.toFixed(0):'–')+' ms</b>)':'Value iteration: '+deltas.length+' sweeps done, not converged yet')+'\nV[start] = '+f(Vn[0])+(conv?'   π(start) = '+AR[pi[0]]:'')}
+let timer=null;function stopPlay(){if(timer){clearInterval(timer);timer=null;$('bPlay').textContent='▶ Play'}}
+$('bNext').onclick=()=>{stopPlay();step()};
+$('bPlay').onclick=()=>{if(timer){stopPlay();return}timer=setInterval(step,450);$('bPlay').textContent='⏸ Pause'};
+$('bSw').onclick=()=>{stopPlay();if(stage<0)return;const t=deltas.length+1;fast(()=>deltas.length>=t,msg)};
+$('b10').onclick=()=>{stopPlay();if(stage<0)return;const t=deltas.length+10;fast(()=>deltas.length>=t,msg)};
+$('bAll').onclick=()=>{stopPlay();if(stage<0)return;fast(()=>false,msg)};
+$('bReset').onclick=()=>{stopPlay();init()};
+init();
+</script></body></html>

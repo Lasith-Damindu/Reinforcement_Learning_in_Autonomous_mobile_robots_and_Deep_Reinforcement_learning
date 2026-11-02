@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>q_learning() — Code Walkthrough</title>
+<style>
+:root{--bg:#0b1020;--bg2:#121a33;--card:rgba(255,255,255,.055);--bd:rgba(255,255,255,.1);--tx:#eef1fb;--tx2:#9aa6c7;--mut:#66719a;
+--g:#2ee6a6;--r:#ff5d73;--o:#ffb547;--p:#8b7bff;--b:#4cc2ff;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media(prefers-color-scheme:light){:root{--bg:#eef1fb;--bg2:#fff;--card:rgba(255,255,255,.8);--bd:rgba(20,30,70,.12);--tx:#141a33;--tx2:#4a5578;--mut:#7c87a8;--g:#0aa77a;--r:#e0364f;--o:#e08a00;--p:#6a58f0;--b:#1b8fd6}}
+*{box-sizing:border-box}
+body{margin:0;padding:22px;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--tx);min-height:100vh;
+background:radial-gradient(900px 500px at 10% -10%,rgba(139,123,255,.25),transparent 60%),radial-gradient(800px 500px at 100% 0,rgba(46,230,166,.15),transparent 60%),var(--bg)}
+.app{max-width:1060px;margin:auto}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.4px;background:linear-gradient(90deg,var(--p),var(--b),var(--g));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--tx2);font-size:13px;margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:14px 16px;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.lab{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--tx2);margin:0 0 8px;font-weight:600}
+.pipe{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
+.chip{position:relative;padding:9px 10px;border-radius:12px;border:1px solid var(--bd);background:var(--card);font-size:12px;color:var(--tx2);transition:.25s}
+.chip b{display:block;font-size:10px;color:var(--mut);margin-bottom:2px}
+.chip.on{color:var(--tx);border-color:var(--p);background:linear-gradient(135deg,rgba(139,123,255,.3),rgba(76,194,255,.15));box-shadow:0 0 0 3px rgba(139,123,255,.2),0 8px 22px rgba(139,123,255,.3);transform:translateY(-3px)}
+.chip.on b{color:var(--p)}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.stat{padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--bd)}
+.stat span{font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.6px}
+.stat b{display:block;font-size:24px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.bar{height:5px;border-radius:3px;background:var(--bd);margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;width:0;border-radius:3px;transition:width .4s}
+.main{display:grid;grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:14px}
+.gridcard{padding:10px}
+#grid{width:100%;height:auto;display:block}
+#bot{transition:transform .45s cubic-bezier(.34,1.4,.64,1)}
+.pulse{animation:pl 1s ease-in-out infinite}@keyframes pl{50%{opacity:.35}}
+.dash{stroke-dasharray:7 6;animation:dh .6s linear infinite}@keyframes dh{to{stroke-dashoffset:-13}}
+.goal{animation:gl 2s ease-in-out infinite}@keyframes gl{50%{filter:drop-shadow(0 0 8px var(--g))}}
+#ttl{font-family:var(--mono);font-size:12.5px;color:var(--o);margin:0 0 8px;min-height:18px}
+#lines{font-family:var(--mono);font-size:12.5px;line-height:1.8;min-height:104px;color:var(--tx)}
+#lines b{color:var(--g)}
+.q{display:grid;grid-template-columns:24px 1fr 60px;gap:8px;align-items:center;margin:7px 0;font-size:13px}
+.qb{height:12px;border-radius:6px;background:var(--bd);position:relative;overflow:hidden}
+.qb i{position:absolute;top:0;bottom:0;left:0;border-radius:6px;transition:width .35s}
+.q.sel{color:var(--o);font-weight:700}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--tx2);margin-top:6px;padding:0 6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+button{font:600 13px inherit;font-family:inherit;color:var(--tx);padding:10px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--card);cursor:pointer;transition:.18s}
+button:hover{transform:translateY(-2px);border-color:var(--p);box-shadow:0 8px 18px rgba(139,123,255,.25)}
+button.pri{background:linear-gradient(135deg,var(--p),var(--b));border:0;color:#fff}
+pre{margin:0;font:12.5px/1.75 var(--mono);color:var(--tx2);white-space:pre-wrap;overflow-x:auto}
+.cl{display:block;padding:0 8px;border-left:3px solid transparent;border-radius:4px;transition:.2s}
+.cl.on{background:rgba(255,181,71,.15);border-left-color:var(--o);color:var(--tx);font-weight:600}
+.kw{color:var(--p)}.out{font:12.5px/1.8 var(--mono);color:var(--tx);background:rgba(0,0,0,.25);border-radius:10px;padding:10px 12px;white-space:pre-wrap}.out b{color:var(--g)}
+@media(max-width:820px){.main{grid-template-columns:1fr}.pipe{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><div class="app">
+<h1>q_learning(env) · live code walkthrough</h1>
+<p class="sub">Each click runs one real line of the function below, on a slippery 6×6 grid (α=0.2, γ=0.95, ε: 1.0→0.05). Train it, then read the learned policy, greedy path and notebook output.</p>
+<div class="pipe" id="chips">
+<div class="chip" data-k="0"><b>STEP 1</b>ε schedule</div><div class="chip" data-k="1"><b>STEP 2</b>env.reset()</div>
+<div class="chip" data-k="2"><b>STEP 3</b>ε-greedy choice</div><div class="chip" data-k="3"><b>STEP 4</b>env.step(a)</div>
+<div class="chip" data-k="4"><b>STEP 5</b>target</div><div class="chip" data-k="5"><b>STEP 6</b>update Q ↻</div></div>
+<div class="stats">
+<div class="stat"><span>Episode</span><b id="sEp">0</b><div class="bar"><i id="pEp" style="background:var(--p)"></i></div></div>
+<div class="stat"><span>Step t</span><b id="sT">0</b><div class="bar"><i id="pT" style="background:var(--b)"></i></div></div>
+<div class="stat"><span>ε explore</span><b id="sEps">1.000</b><div class="bar"><i id="pEps" style="background:var(--o)"></i></div></div>
+<div class="stat"><span>Ep. reward</span><b id="sTot">0</b></div>
+<div class="stat"><span>Success (100)</span><b id="sSucc">–</b><div class="bar"><i id="pSucc" style="background:var(--g)"></i></div></div></div>
+<div class="main">
+<div class="card gridcard"><svg id="grid" viewBox="0 0 404 404"></svg>
+<div class="legend"><span><i style="background:var(--g)"></i>positive Q</span><span><i style="background:var(--r)"></i>negative Q</span><span><i style="background:#555c7a"></i>obstacle</span><span><i style="background:var(--p)"></i>robot</span><span><i style="background:var(--o)"></i>active cell</span><span><i style="background:var(--b)"></i>greedy path</span></div></div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div class="card"><p class="lab">q_learning() · inner loop</p><pre id="code"><span class="kw">for</span> ep <span class="kw">in</span> range(episodes):
+<span class="cl" data-k="0">    eps = max(eps_min, eps0 * (1 - ep / (0.6 * episodes)))</span><span class="cl" data-k="1">    s = env.reset(); done, tot = False, 0</span>    <span class="kw">while not</span> done:
+<span class="cl" data-k="2">        a = rng.integers(4) if rng.random() &lt; eps else int(np.argmax(Q[s]))</span><span class="cl" data-k="3">        s2, r, done, ok = env.step(a)</span><span class="cl" data-k="4">        target = r + (0 if (done and env.t &lt; env.max_steps) else gamma * Q[s2].max())</span><span class="cl" data-k="5">        Q[s, a] += alpha * (target - Q[s, a]); s, tot = s2, tot + r</span>    rewards.append(tot); succ.append(ok)</pre></div>
+<div class="card"><p class="lab">What's happening</p><p id="ttl">Press “Next step” to begin</p>
+<div id="lines">The robot starts with Q = zeros((36, 4)). It knows nothing about slip, obstacles or the goal.</div></div>
+<div class="card"><p class="lab" id="qlab">Q[s] row for the current cell</p><div id="qrow"></div></div>
+<div class="card"><p class="lab" id="splab">Q-learning: episode reward (100-ep mean) · appears after training</p>
+<svg id="spark" viewBox="0 0 640 90" width="100%" height="90" preserveAspectRatio="none"></svg></div></div></div>
+<div class="card" style="margin-top:14px"><p class="lab">Notebook output (updates as you train)</p><div class="out" id="out"></div></div>
+<div class="btns"><button class="pri" id="bNext">Next step ▸</button><button id="bPlay">▶ Play</button><button id="bEp">Finish episode</button><button id="b100">Train 100 episodes</button><button id="bAll">Train to 3000</button><button id="bReset">↺ Reset</button></div>
+</div>
+<script>
+const N=6,OBS=new Set(['1,1','2,1','3,3','4,3','1,4','3,0','4,5']),SLIP=0.1,MAXS=50,EPIS=3000,AL=0.2,GM=0.95;
+const MV=[[0,1],[1,0],[0,-1],[-1,0]],AR=['↑','→','↓','←'],$=id=>document.getElementById(id);
+function mk(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const pos=i=>[i%N,Math.floor(i/N)],idx=(x,y)=>y*N+x;
+const f=v=>(v<0?'−':'')+Math.abs(v).toFixed(2);
+const P=p=>'('+p[0]+','+p[1]+')';
+const CS=64,cx=x=>10+x*CS,cy=y=>10+(5-y)*CS;
+function move(p,a){const q=[Math.min(Math.max(p[0]+MV[a][0],0),N-1),Math.min(Math.max(p[1]+MV[a][1],0),N-1)];if(OBS.has(q+''))return[p,-10,false];if(q[0]==5&&q[1]==5)return[q,10,true];return[q,-1,false]}
+let trainMs=0,ra,re,Q,vis,ep,s,t,eps,tot,stage,c,hist,sh,timer=null;
+function init(){trainMs=0;ra=mk(0);re=mk(100);Q=Array.from({length:36},()=>[0,0,0,0]);vis=new Array(36).fill(false);ep=0;s=0;t=0;eps=1;tot=0;stage=0;c={};hist=[];sh=[];
+$('ttl').textContent='Press “Next step” to begin';
+$('lines').innerHTML='The robot starts with Q = zeros((36, 4)). It knows nothing about slip, obstacles or the goal.';buildGrid();render(-1)}
+function argmax(r){let b=0;for(let i=1;i<4;i++)if(r[i]>r[b])b=i;return b}
+function doStage(){let T='',L=[];const k=stage;
+if(stage==0){eps=Math.max(0.05,1*(1-ep/(0.6*EPIS)));T='eps = max(eps_min, eps0·(1 − ep/(0.6·episodes)))';
+L=['ep = '+ep+'   (decay ends at ep 1800)','ε = max(0.05, 1.0 × (1 − '+ep+'/1800))','ε = <b>'+eps.toFixed(3)+'</b>  → chance of a random move'];stage=1}
+else if(stage==1){s=0;t=0;tot=0;T='s = env.reset()';L=['robot placed at start (0,0)','s = idx(0,0) = 0,  t = 0,  tot = 0'];stage=2}
+else if(stage==2){const u=ra(),r=Q[s];let a,why;if(u<eps){a=Math.floor(ra()*4);why=['random u = '+u.toFixed(3)+' &lt; ε = '+eps.toFixed(3),'→ <b>explore</b>: random action a = '+a+' '+AR[a]]}else{a=argmax(r);why=['random u = '+u.toFixed(3)+' ≥ ε = '+eps.toFixed(3),'→ <b>exploit</b>: argmax Q[s] = ['+r.map(f).join(', ')+']','→ a = '+a+' '+AR[a]]}
+c={a};T='a = rng.integers(4) if rng.random() &lt; eps else argmax(Q[s])';L=['state s = '+s+' at '+P(pos(s))].concat(why);stage=3}
+else if(stage==3){const u=re();let b=c.a,sl;if(u<SLIP){b=Math.floor(re()*4);sl='slip roll '+u.toFixed(3)+' &lt; 0.1 → <b>wheels slip</b>, execute '+AR[b]}else sl='slip roll '+u.toFixed(3)+' ≥ 0.1 → wheels obey, execute '+AR[b];
+const p=pos(s),[q,r,d]=move(p,b);t++;c.s2=idx(q[0],q[1]);c.r=r;c.goal=d;c.fin=d||t>=MAXS;c.from=s;
+const why=r==-10?'obstacle bump, stays put':(d?'reached goal':'normal move');
+T='s2, r, done, ok = env.step(a)';L=[sl,P(p)+' → '+P(q)+'   ('+why+')','r = <b>'+r+'</b>,  t = '+t+'/50,  done = '+(c.fin?'True':'False')];stage=4}
+else if(stage==4){const trueEnd=c.goal&&t<MAXS,m=Math.max(...Q[c.s2]);c.tg=c.r+(trueEnd?0:GM*m);T='target = r + (0 if true end else γ·max Q[s2])';
+L=trueEnd?['goal reached → no future term','target = r = <b>'+f(c.tg)+'</b>']:['max Q[s2] = max['+Q[c.s2].map(f).join(', ')+'] = '+f(m),'target = '+c.r+' + 0.95 × '+f(m),'target = <b>'+f(c.tg)+'</b>'];stage=5}
+else{const o=Q[s][c.a],td=c.tg-o,nw=o+AL*td;Q[s][c.a]=nw;vis[s]=true;T='Q[s,a] += alpha·(target − Q[s,a])';
+L=['TD error = target − Q[s,a] = '+f(c.tg)+' − '+f(o)+' = '+f(td),'Q['+s+','+AR[c.a]+'] = '+f(o)+' + 0.2 × '+f(td),'Q['+s+','+AR[c.a]+'] = <b>'+f(nw)+'</b>'];
+const upd=s;s=c.s2;tot+=c.r;
+if(c.fin){hist.push(tot);sh.push(c.goal?1:0);L.push('episode over: '+(c.goal?'goal reached 🎉':'time limit')+', total reward '+tot);ep++;stage=ep>=EPIS?-1:0}else{L.push('s ← s2, back to step 3');stage=2}
+c.upd=upd}
+return{k,T,L}}
+function step(){if(stage<0)return;const o=doStage();$('ttl').innerHTML=o.T;$('lines').innerHTML=o.L.join('<br>');render(o.k)}
+function fast(cond){const T0=performance.now();while(stage>=0&&cond())doStage();trainMs+=performance.now()-T0;c={};$('ttl').textContent='Fast-forwarded';$('lines').innerHTML='Trained to episode '+ep+'. ε is now '+Math.max(0.05,1-ep/1800).toFixed(3)+'.<br>Press “Next step” to watch the next episode in detail.';render(-1)}
+function greedyPath(){let p=[0],x=0;for(let i=0;i<36;i++){const a=argmax(Q[x]),q=move(pos(x),a)[0],n=idx(q[0],q[1]);if(n===x||p.includes(n))break;p.push(n);x=n;if(n===35)break}return p}
+function buildGrid(){let g='<defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ee6a6"/><stop offset="1" stop-color="#0aa77a"/></linearGradient><pattern id="rk" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#3a4160"/><rect width="3" height="8" fill="#2d3350"/></pattern><radialGradient id="rb"><stop offset="0" stop-color="#b9afff"/><stop offset="1" stop-color="#6c5ce7"/></radialGradient></defs><g id="cells"></g><g id="trail"></g><g id="bot" style="transform:translate(0,0)"><circle r="17" fill="#8b7bff" opacity=".25"/><circle r="12" fill="url(#rb)" stroke="#fff" stroke-width="2"/><circle cx="-4" cy="-3" r="2.2" fill="#fff"/><circle cx="4" cy="-3" r="2.2" fill="#fff"/><rect x="-4" y="3" width="8" height="2" rx="1" fill="#fff"/></g>';$('grid').innerHTML=g}
+function render(k){document.querySelectorAll('.chip').forEach(e=>e.classList.toggle('on',+e.dataset.k===k));
+$('sEp').textContent=ep;$('sT').textContent=t;$('sEps').textContent=eps.toFixed(3);$('sTot').textContent=tot;
+$('pEp').style.width=100*ep/EPIS+'%';$('pT').style.width=100*t/MAXS+'%';$('pEps').style.width=100*eps+'%';
+const last=sh.slice(-100),sp100=last.length?Math.round(100*last.reduce((a,b)=>a+b,0)/last.length):null;$('sSucc').textContent=sp100===null?'–':sp100+'%';$('pSucc').style.width=(sp100||0)+'%';
+let g='';for(let i=0;i<36;i++){const[x,y]=pos(i),X=cx(x),Y=cy(y),m=CS-6;
+if(OBS.has(x+','+y)){g+='<rect x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="url(#rk)" stroke="#555c7a"/><text x="'+(X+m/2)+'" y="'+(Y+m/2+8)+'" text-anchor="middle" font-size="22" opacity=".6">🪨</text>';continue}
+if(x==5&&y==5){g+='<g class="goal"><rect x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="url(#gg)"/><text x="'+(X+m/2)+'" y="'+(Y+m/2+10)+'" text-anchor="middle" font-size="30" fill="#fff">★</text></g>';continue}
+const v=Math.max(...Q[i]);let fill='rgba(150,160,200,.1)',op=1;if(vis[i]){if(v>=0){fill='#2ee6a6';op=0.18+0.7*Math.min(1,v/10)}else{fill='#ff5d73';op=0.15+0.65*Math.min(1,-v/10)}}
+const hl=(k==5&&c.upd===i)||(k>=2&&k<=4&&i==(k==2?s:c.from));
+g+='<rect class="'+(hl?'pulse':'')+'" x="'+X+'" y="'+Y+'" width="'+m+'" height="'+m+'" rx="12" fill="'+fill+'" fill-opacity="'+op+'" stroke="'+(hl?'#ffb547':'rgba(150,160,200,.25)')+'" stroke-width="'+(hl?3:1)+'"/>';
+if(vis[i])g+='<text x="'+(X+m/2)+'" y="'+(Y+m/2-2)+'" text-anchor="middle" font-size="22" font-weight="700" fill="var(--tx)">'+AR[argmax(Q[i])]+'</text><text x="'+(X+m/2)+'" y="'+(Y+m/2+16)+'" text-anchor="middle" font-size="11" fill="var(--tx2)">'+f(v).replace('.00','')+'</text>';
+if(x==0&&y==0&&!vis[i])g+='<text x="'+(X+m/2)+'" y="'+(Y+m/2+6)+'" text-anchor="middle" font-size="18" font-weight="700" fill="var(--tx2)">S</text>'}
+if(k>=3&&k<=5&&c.s2!==undefined&&c.from!==c.s2){const a=pos(c.from),b=pos(c.s2);g+='<line class="dash" x1="'+(cx(a[0])+29)+'" y1="'+(cy(a[1])+29)+'" x2="'+(cx(b[0])+29)+'" y2="'+(cy(b[1])+29)+'" stroke="#ffb547" stroke-width="4" stroke-linecap="round"/>'}
+if(hist.length){const gp=greedyPath();if(gp.length>1)g+='<polyline points="'+gp.map(i=>{const q=pos(i);return(cx(q[0])+29)+','+(cy(q[1])+29)}).join(' ')+'" fill="none" stroke="#4cc2ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>'}
+$('cells').innerHTML=g;
+document.querySelectorAll('.cl').forEach(e=>e.classList.toggle('on',+e.dataset.k===k));
+$('out').innerHTML=(ep>0&&trainMs>0?'Q-learning: <b>'+ep+'</b> episodes in <b>'+(trainMs/1000).toFixed(1)+'s</b>\n':'Q-learning: (not trained yet)\n')+'Q-values of the start state: {'+AR.map((a,i)=>"'"+a+"': "+Q[0][i].toFixed(2)).join(', ')+'}'+(hist.length?'\nlearned policy at start: <b>'+AR[argmax(Q[0])]+'</b>  (blue line = greedy_path(pi_q))':'');
+const rp=(k>=3&&k<=4)?pos(c.s2):pos(s);$('bot').style.transform='translate('+(cx(rp[0])+29)+'px,'+(cy(rp[1])+29)+'px)';
+const qs=(k==5&&c.upd!==undefined)?c.upd:(k>=3&&k<=4?c.from:s);$('qlab').textContent='Q['+qs+'] row · cell '+P(pos(qs));
+let h='';const ca=(k>=2)?c.a:-1;for(let a=0;a<4;a++){const v=Q[qs][a],w=Math.min(50,Math.abs(v)*5);h+='<div class="q'+(a===ca?' sel':'')+'"><span style="font-size:18px">'+AR[a]+'</span><div class="qb"><i style="'+(v>=0?'left:50%;background:linear-gradient(90deg,#0aa77a,#2ee6a6)':'right:50%;left:auto;background:linear-gradient(270deg,#e0364f,#ff5d73)')+';width:'+w+'%"></i><b style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--mut)"></b></div><span style="text-align:right;font-family:var(--mono)">'+f(v)+'</span></div>'}
+$('qrow').innerHTML=h;
+let spk='';if(hist.length>1){const W=100,m=[];for(let i=0;i<hist.length;i++){const lo=Math.max(0,i-W+1);let su=0;for(let j=lo;j<=i;j++)su+=hist[j];m.push(su/(i-lo+1))}
+const mn=Math.min(...m),mx=Math.max(...m),rg=(mx-mn)||1,pts=m.map((v,i)=>(i/(m.length-1)*640).toFixed(1)+','+(80-(v-mn)/rg*68).toFixed(1)).join(' ');
+spk='<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4cc2ff" stop-opacity=".5"/><stop offset="1" stop-color="#4cc2ff" stop-opacity="0"/></linearGradient></defs><polygon points="0,90 '+pts+' 640,90" fill="url(#sg)"/><polyline fill="none" stroke="#4cc2ff" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="'+pts+'"/>';
+$('splab').textContent='Episode reward, 100-episode mean: '+m[m.length-1].toFixed(1)+'  (range '+mn.toFixed(0)+' to '+mx.toFixed(0)+', '+hist.length+' episodes)'}
+$('spark').innerHTML=spk}
+function stopPlay(){if(timer){clearInterval(timer);timer=null;$('bPlay').textContent='▶ Play'}}
+$('bNext').onclick=()=>{stopPlay();step()};
+$('bPlay').onclick=()=>{if(timer){stopPlay();return}timer=setInterval(step,650);$('bPlay').textContent='⏸ Pause'};
+$('bEp').onclick=()=>{stopPlay();const e=ep;fast(()=>ep===e)};
+$('b100').onclick=()=>{stopPlay();const e=ep+100;fast(()=>ep<e||stage!==0)};
+$('bAll').onclick=()=>{stopPlay();fast(()=>true)};
+$('bReset').onclick=()=>{stopPlay();init()};
+init();
+</script></body></html>
